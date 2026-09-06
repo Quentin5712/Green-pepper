@@ -6,10 +6,104 @@
 <title>Green Pepper</title>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
-  --bg:#0B0F1A;
-  --surface:#141B2D;
+--font-head: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+--font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;--gold:#BF5FFF;--dark:#0A0010;--dark2:#110020;--card:#18082E;--border:rgba(191,95,255,0.18);--text:#F0E8FF;--muted:#8A7FA0;--green:#00FFB3;--orange:#FF2D78;--red:#FF2D78;--mtn:#FFCD00;--om:#FF6600;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--dark);color:var(--text);font-family:var(--font-body);min-height:100vh;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(10,12,16,0.97);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.logo{font-family:system-ui,sans-serif;font-size:20px;font-weight:800;}.logo span{color:var(--gold);}
+.bal-pill{background:rgba(244,168,0,0.1);border:1px solid var(--border);border-radius:50px;padding:6px 13px;font-size:13px;}.bal-pill strong{color:var(--gold);}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--orange));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#0A0C10;cursor:pointer;position:relative;}
+.av-menu{display:none;position:absolute;top:42px;right:0;background:#1E2232;border:1px solid var(--border);border-radius:12px;padding:6px;min-width:155px;z-index:200;box-shadow:0 20px 40px rgba(0,0,0,0.4);}
+.av-menu.open{display:block;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,12,16,0.97);backdrop-filter:blur(20px);border-top:1px solid rgba(244,168,0,0.15);display:flex;align-items:center;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:999;}
+.bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:var(--font-head);font-size:9px;font-weight:700;padding:4px 8px;border-radius:10px;transition:all .2s;min-width:48px;text-transform:uppercase;}
+.bn-item .bn-icon{font-size:20px;line-height:1;}
+.bn-item.active,.bn-item:hover{color:var(--gold);}
+.bn-item.active .bn-icon{transform:scale(1.15);}
+.bn-more-menu{position:fixed;bottom:72px;right:12px;background:var(--card);border:1px solid rgba(244,168,0,0.2);border-radius:14px;padding:8px;display:none;flex-direction:column;gap:4px;z-index:1000;min-width:160px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);}
+.bn-more-menu.open{display:flex;}
+.bn-more-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;border:none;background:none;cursor:pointer;color:var(--text);font-family:var(--font-head);font-size:12px;font-weight:700;transition:background .15s;text-align:left;width:100%;}
+.bn-more-item:hover{background:rgba(244,168,0,0.08);}
+#appWrap .pages-wrap{padding-bottom:80px;}.av-item{padding:10px 13px;border-radius:8px;font-size:13px;cursor:pointer;}.av-item:hover{background:rgba(255,255,255,0.05);}.av-item.red{color:var(--red);}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 14px;}
+.tabs{display:none;}
+.tab{padding:7px 14px;border-radius:50px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.tab.active,.tab:hover{background:var(--gold);border-color:var(--gold);color:#0A0C10;font-weight:600;}
+.page{display:none !important;}.page.active{display:block !important;}
+.sec-label{font-family:system-ui,sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:5px;}
+.sec-title{font-family:system-ui,sans-serif;font-size:20px;font-weight:700;margin-bottom:16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px 16px;}
+.card-lbl{font-size:11px;color:var(--muted);margin-bottom:5px;}.card-val{font-family:system-ui,sans-serif;font-size:20px;font-weight:700;}.gold{color:var(--gold);}.green{color:var(--green);}
+.vip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
+.vip-card{background:var(--card);border-radius:14px;border:1px solid rgba(255,255,255,0.07);overflow:hidden;transition:transform 0.2s;}.vip-card:hover{transform:translateY(-2px);}
+.vip-head{padding:13px 15px 10px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;}
+.vip-badge{font-family:system-ui,sans-serif;font-size:10px;font-weight:700;padding:3px 9px;border-radius:50px;text-transform:uppercase;letter-spacing:1px;}
+.vip-body{padding:13px 15px;}
+.vip-row{display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px;}.vip-row span:first-child{color:var(--muted);}
+.vip-btn{width:100%;padding:10px;border-radius:9px;border:none;cursor:pointer;font-family:system-ui,sans-serif;font-weight:700;font-size:12px;transition:all 0.2s;margin-top:8px;}
+.vip-btn:hover{filter:brightness(1.1);}.vip-btn.locked{background:rgba(255,255,255,0.05);color:var(--muted);cursor:not-allowed;}.vip-btn.locked:hover{filter:none;}
+.pay-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;}
+.pay-ops{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;}
+.pay-op{padding:12px;border-radius:10px;border:2px solid rgba(255,255,255,0.08);background:#12151C;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:9px;}.pay-op:hover{border-color:var(--gold);}.pay-op.sel{border-color:var(--gold);background:rgba(244,168,0,0.07);}
+.pay-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:9px;}.mtn-bg{background:var(--mtn);color:#000;}.om-bg{background:var(--om);color:#fff;}
+.pay-name{font-family:system-ui,sans-serif;font-weight:700;font-size:12px;}.pay-sub{font-size:10px;color:var(--muted);}
+.chk{font-size:14px;color:var(--gold);opacity:0;margin-left:auto;transition:opacity 0.2s;}.pay-op.sel .chk{opacity:1;}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin:7px 0;}
+.chip{padding:5px 11px;border-radius:50px;font-size:11px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.2s;}.chip:hover,.chip.sel{border-color:var(--gold);color:var(--gold);background:rgba(244,168,0,0.07);}
+.inp-lbl{font-size:11px;color:var(--muted);margin-bottom:4px;display:block;}
+.inp{width:100%;padding:10px 12px;border-radius:9px;border:1.5px solid #2A2E3E;background:#12151C;color:var(--text);font-size:13px;font-family:var(--font-body);outline:none;transition:border-color 0.2s;margin-bottom:10px;}.inp:focus{border-color:var(--gold);}.inp::placeholder{color:#4A4F66;}
+.main-btn{width:100%;padding:12px;border-radius:10px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--gold),#E69500);color:#0A0C10;font-family:system-ui,sans-serif;font-weight:800;font-size:14px;transition:all 0.2s;}.main-btn:hover{filter:brightness(1.08);}
+.tbl-wrap{background:var(--card);border-radius:13px;border:1px solid var(--border);overflow:hidden;}
+table{width:100%;border-collapse:collapse;}th{text-align:left;padding:9px 12px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.06);}td{padding:9px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.badge{padding:2px 8px;border-radius:50px;font-size:10px;font-weight:600;}.b-ok{background:rgba(0,200,150,0.15);color:var(--green);}.b-wait{background:rgba(244,168,0,0.15);color:var(--gold);}.b-done{background:rgba(122,127,150,0.15);color:var(--muted);}.b-red{background:rgba(255,77,77,0.15);color:var(--red);}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;}.overlay.open{display:flex;}
+.modal{background:#12151C;border:1px solid var(--border);border-radius:18px;padding:24px;max-width:380px;width:90%;}
+.modal-title{font-family:system-ui,sans-serif;font-size:17px;font-weight:700;margin-bottom:5px;}.modal-close{float:right;cursor:pointer;color:var(--muted);font-size:19px;}
+.modal-btns{display:flex;gap:8px;margin-top:14px;}
+.sec-btn{flex:1;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--text);font-family:system-ui,sans-serif;font-weight:600;font-size:12px;cursor:pointer;}
+.toast{position:fixed;bottom:14px;right:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 15px;font-size:12px;z-index:9999;transform:translateY(60px);opacity:0;transition:all 0.3s;max-width:260px;}.toast.show{transform:translateY(0);opacity:1;}.toast.ok{border-color:rgba(0,200,150,0.3);}.toast.err{border-color:rgba(255,77,77,0.3);}
+.timer{display:inline-flex;align-items:center;gap:4px;background:rgba(0,200,150,0.1);border:1px solid rgba(0,200,150,0.2);padding:3px 8px;border-radius:50px;font-size:10px;color:var(--green);}
+.tdot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.admin-row{background:#12151C;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 13px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;}
+.appr-btn{padding:6px 12px;border-radius:7px;border:none;cursor:pointer;background:var(--green);color:#000;font-family:system-ui,sans-serif;font-weight:700;font-size:11px;}
+.rej-btn{padding:6px 12px;border-radius:7px;border:1px solid rgba(255,77,77,0.3);cursor:pointer;background:rgba(255,77,77,0.12);color:var(--red);font-family:system-ui,sans-serif;font-weight:700;font-size:11px;margin-left:4px;}
+.empty{color:var(--muted);font-size:12px;padding:12px 0;}
+.sep{height:1px;background:rgba(255,255,255,0.06);margin:16px 0;}
+.spin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;}.spin-overlay.show{display:flex;}
+.spin-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center;font-size:14px;color:var(--muted);}
+@media(max-width:500px){nav{padding:10px 12px;}.wrap{padding:14px 10px;}.pay-ops{grid-template-columns:1fr;}}
+
+
+.setup-box{background:#1E2232;border:1px solid rgba(244,168,0,0.3);border-radius:22px;padding:32px 26px;width:100%;max-width:420px;box-shadow:0 30px 60px rgba(0,0,0,0.5);}
+
+#loadBar { animation: loadAnim 3s ease forwards; }
+@keyframes loadAnim {
+  0%  { width: 0%; }
+  30% { width: 40%; }
+  60% { width: 70%; }
+  85% { width: 88%; }
+  100%{ width: 92%; }
+}
+
+
+@keyframes glow{0%,100%{box-shadow:0 0 8px rgba(191,95,255,0.4),0 0 20px rgba(191,95,255,0.2);}50%{box-shadow:0 0 15px rgba(191,95,255,0.8),0 0 40px rgba(191,95,255,0.3);}}
+@keyframes glow-green{0%,100%{box-shadow:0 0 8px rgba(0,255,179,0.4);}50%{box-shadow:0 0 20px rgba(0,255,179,0.8);}}
+@keyframes fluo-border{0%,100%{border-color:rgba(191,95,255,0.2);}50%{border-color:rgba(191,95,255,0.7);}}
+.tab.active{color:#BF5FFF!important;text-shadow:0 0 10px rgba(191,95,255,0.9);}
+.tab.active span:first-child{filter:drop-shadow(0 0 8px rgba(191,95,255,1));}
+.vip-card,.pay-card{animation:fluo-border 4s ease-in-out infinite;}
+.appr-btn{background:linear-gradient(135deg,#00FFB3,#00C896)!important;box-shadow:0 0 12px rgba(0,255,179,0.4);}
+.rej-btn{box-shadow:0 0 8px rgba(255,45,120,0.4);}
+</style>
+<style>
+/* ══ SBC OVERRIDE STYLES ══ */
+:root{
+  --dark:#0B0F1A;
+  --dark2:#141B2D;
   --card:#1E2640;
   --card2:#252E47;
   --gold:#F5A623;
@@ -17,309 +111,214 @@
   --red:#FF5252;
   --blue:#4A90D9;
   --text:#FFFFFF;
-  --text2:#B8C2D8;
-  --text3:#6B7A99;
-  --border:rgba(255,255,255,0.06);
-  --radius:16px;
-  --radius-sm:10px;
-  --font:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --muted:#8892A4;
+  --border:rgba(255,255,255,0.07);
+  --font-head:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --orange:#F5A623;
 }
-body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;}
+body{background:var(--dark);color:var(--text);font-family:var(--font-body);}
 
-/* ── LOAD SCREEN ── */
-#loadScreen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;}
-.load-logo{font-size:56px;margin-bottom:12px;}
-.load-name{font-size:22px;font-weight:700;color:var(--text);letter-spacing:0.5px;margin-bottom:4px;}
-.load-sub{font-size:13px;color:var(--text3);margin-bottom:40px;}
-.load-bar-wrap{width:160px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
-.load-bar{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--green));border-radius:2px;transition:width 0.4s;}
-
-/* ── AUTH ── */
-#authWrap{position:fixed;inset:0;background:var(--bg);z-index:999;overflow-y:auto;display:flex;flex-direction:column;}
-.auth-header{padding:60px 24px 32px;text-align:center;}
-.auth-logo{font-size:52px;margin-bottom:16px;}
-.auth-title{font-size:28px;font-weight:800;color:var(--text);margin-bottom:6px;}
-.auth-sub{font-size:14px;color:var(--text3);}
-.auth-body{flex:1;padding:0 20px 40px;}
-.auth-tabs{display:flex;background:var(--surface);border-radius:var(--radius);padding:4px;margin-bottom:28px;}
-.auth-tab{flex:1;padding:10px;border-radius:12px;border:none;background:none;color:var(--text3);font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-.auth-tab.active{background:var(--card);color:var(--text);}
-.inp-group{margin-bottom:16px;}
-.inp-label{font-size:12px;color:var(--text3);margin-bottom:6px;display:block;font-weight:500;}
-.inp{width:100%;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:15px;outline:none;transition:border 0.2s;}
-.inp:focus{border-color:var(--gold);}
-.inp::placeholder{color:var(--text3);}
-.btn-primary{width:100%;padding:16px;background:linear-gradient(135deg,var(--gold),#E8940F);border:none;border-radius:var(--radius);color:#000;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px;letter-spacing:0.3px;}
-.auth-err{color:var(--red);font-size:13px;text-align:center;margin-top:12px;min-height:18px;}
-
-/* ── APP ── */
-#appWrap{display:none;padding-top:64px;padding-bottom:80px;min-height:100vh;}
+/* Auth restyled */
+#authWrap{position:fixed;inset:0;background:var(--dark);z-index:999;overflow-y:auto;}
+.auth-card{max-width:420px;margin:0 auto;padding:32px 20px 60px;}
+.auth-logo-wrap{text-align:center;padding:48px 0 28px;}
+.auth-logo-icon{font-size:54px;display:block;margin-bottom:12px;}
+.auth-logo-name{font-size:26px;font-weight:800;color:var(--text);}
+.auth-logo-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+.auth-tabs-wrap{display:flex;background:var(--dark2);border-radius:14px;padding:4px;margin-bottom:24px;}
+.auth-tab-btn{flex:1;padding:11px;border-radius:11px;border:none;background:none;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+.auth-tab-btn.active{background:var(--card);color:var(--text);}
+.field-group{margin-bottom:14px;}
+.field-label{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px;display:block;}
+.field-input{width:100%;padding:14px 16px;background:var(--dark2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;outline:none;}
+.field-input:focus{border-color:var(--gold);}
+.field-input::placeholder{color:var(--muted);}
+.auth-submit{width:100%;padding:15px;background:linear-gradient(135deg,var(--gold),#E8940F);border:none;border-radius:13px;color:#000;font-size:16px;font-weight:800;cursor:pointer;margin-top:6px;}
+#authErr{color:var(--red);font-size:13px;text-align:center;margin-top:10px;min-height:18px;}
 
 /* ── TOP BAR ── */
-#topBar{position:fixed;top:0;left:0;right:0;z-index:500;background:var(--bg);border-bottom:1px solid var(--border);padding:0 16px;height:64px;display:none;align-items:center;justify-content:space-between;}
-.top-logo{display:flex;align-items:center;gap:8px;}
-.top-logo-icon{font-size:24px;}
-.top-logo-name{font-size:17px;font-weight:800;color:var(--text);}
-.top-right{display:flex;align-items:center;gap:10px;}
-.top-bal{display:flex;flex-direction:column;align-items:flex-end;}
-.top-bal-dep{font-size:11px;color:var(--gold);font-weight:700;}
-.top-bal-wd{font-size:11px;color:var(--green);font-weight:700;}
-#syncDot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:none;}
-@keyframes pulse2{0%,100%{opacity:1;}50%{opacity:0.4;}}
-#syncDot.active{animation:pulse2 1.5s infinite;}
-.btn-logout{padding:7px 14px;border-radius:20px;border:1px solid rgba(255,82,82,0.3);background:rgba(255,82,82,0.08);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;}
+#topBar{
+  position:fixed;top:0;left:0;right:0;height:60px;
+  background:var(--dark);border-bottom:1px solid var(--border);
+  display:none;align-items:center;justify-content:space-between;
+  padding:0 16px;z-index:500;
+}
+.top-brand{display:flex;align-items:center;gap:8px;}
+.top-brand-icon{font-size:22px;}
+.top-brand-name{font-size:16px;font-weight:800;color:var(--text);}
+.top-right{display:flex;align-items:center;gap:8px;}
+.top-bal-dep{font-size:11px;font-weight:700;color:var(--gold);}
+.top-bal-wd{font-size:11px;font-weight:700;color:var(--green);}
+.btn-deconnect{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,82,82,0.3);background:rgba(255,82,82,0.08);color:#FF5252;font-size:11px;font-weight:600;cursor:pointer;}
+#adminBtn{padding:6px 12px;border-radius:20px;border:1px solid rgba(245,166,35,0.3);background:rgba(245,166,35,0.08);color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;}
+
+/* ── APP WRAP ── */
+#appWrap{display:none;padding-top:60px;padding-bottom:76px;min-height:100vh;}
 
 /* ── BOTTOM NAV ── */
-#mainNav{position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--surface);border-top:1px solid var(--border);height:72px;display:none;align-items:flex-start;justify-content:space-around;padding:10px 4px 8px;overflow-x:auto;scrollbar-width:none;}
+#mainNav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--dark2);border-top:1px solid var(--border);
+  height:76px;display:none;
+  align-items:flex-start;padding:10px 0 6px;
+  z-index:500;overflow-x:auto;scrollbar-width:none;
+}
 #mainNav::-webkit-scrollbar{display:none;}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:0 8px;min-width:52px;position:relative;}
-.nav-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;background:var(--card);transition:all 0.2s;}
-.nav-label{font-size:9px;color:var(--text3);font-weight:500;white-space:nowrap;}
-.nav-item.active .nav-icon{background:rgba(245,166,35,0.15);box-shadow:0 0 0 1px rgba(245,166,35,0.3);}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;cursor:pointer;padding:0 10px;
+  min-width:56px;flex-shrink:0;
+}
+.nav-icon{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--card);display:flex;align-items:center;
+  justify-content:center;font-size:19px;transition:all 0.2s;
+}
+.nav-label{font-size:9px;color:var(--muted);font-weight:500;white-space:nowrap;}
+.nav-item.active .nav-icon{
+  background:rgba(245,166,35,0.15);
+  box-shadow:0 0 0 1.5px rgba(245,166,35,0.4);
+}
 .nav-item.active .nav-label{color:var(--gold);font-weight:700;}
 
 /* ── PAGES ── */
-.page{display:none;padding:16px;animation:fadeIn 0.2s ease;}
-.page.active{display:block;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.page{display:none;padding:14px 14px;}
+.page.active{display:block;animation:fadeUp 0.2s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
-/* ── SECTION LABELS ── */
-.sec-label{font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
-.sec-title{font-size:24px;font-weight:800;color:var(--text);margin-bottom:16px;}
-
-/* ── CARDS ── */
-.pay-card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--border);}
-.card-sm{background:var(--card);border-radius:var(--radius-sm);padding:14px;}
-
-/* ── BALANCE CARDS ── */
-.bal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.bal-card{background:var(--card);border-radius:var(--radius);padding:16px 14px;border:1px solid var(--border);}
-.bal-card.gold{border-color:rgba(245,166,35,0.25);background:linear-gradient(135deg,rgba(245,166,35,0.08),var(--card));}
-.bal-card.green{border-color:rgba(0,196,140,0.25);background:linear-gradient(135deg,rgba(0,196,140,0.08),var(--card));}
-.bal-icon{font-size:16px;margin-bottom:6px;}
-.bal-label{font-size:11px;color:var(--text3);font-weight:500;margin-bottom:4px;}
-.bal-amount{font-size:20px;font-weight:800;color:var(--text);}
-.bal-amount.gold{color:var(--gold);}
-.bal-amount.green{color:var(--green);}
-.bal-sub{font-size:10px;color:var(--text3);margin-top:2px;}
-
-/* ── TABS ── */
-.tab-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:14px;}
-.tab-row::-webkit-scrollbar{display:none;}
-.tab-pill{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text3);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;}
-.tab-pill.active{background:var(--gold);border-color:var(--gold);color:#000;font-weight:700;}
-
-/* ── BUTTONS ── */
-.btn{padding:14px 20px;border-radius:var(--radius);border:none;font-size:15px;font-weight:700;cursor:pointer;width:100%;margin-top:8px;transition:all 0.15s;}
-.btn-gold{background:linear-gradient(135deg,var(--gold),#E8940F);color:#000;}
-.btn-green{background:linear-gradient(135deg,var(--green),#00A87A);color:#000;}
-.btn-outline{background:none;border:1px solid var(--border);color:var(--text2);}
-.btn-red{background:rgba(255,82,82,0.1);border:1px solid rgba(255,82,82,0.3);color:var(--red);}
-.btn-disabled{background:var(--card2);color:var(--text3);cursor:not-allowed;}
-
-/* ── VIP CARDS ── */
-.vip-card{background:var(--card);border-radius:var(--radius);overflow:hidden;margin-bottom:14px;border:1px solid var(--border);}
-.vip-img{width:100%;height:140px;object-fit:cover;}
-.vip-body{padding:14px;}
-.vip-name{font-size:17px;font-weight:800;color:var(--text);margin-bottom:2px;}
-.vip-stars{font-size:13px;color:var(--gold);margin-bottom:6px;}
-.vip-desc{font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:12px;font-style:italic;}
-.vip-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
-.vip-stat{background:var(--card2);border-radius:var(--radius-sm);padding:10px;}
-.vip-stat-label{font-size:10px;color:var(--text3);margin-bottom:2px;}
-.vip-stat-val{font-size:14px;font-weight:700;color:var(--text);}
-.vip-btn{padding:12px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:700;cursor:pointer;width:100%;transition:all 0.2s;}
-
-/* ── TRANSACTIONS ── */
-.tx-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
-.tx-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-.tx-info{flex:1;}
-.tx-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
-.tx-date{font-size:11px;color:var(--text3);}
-.tx-amount{font-size:14px;font-weight:700;}
-
-/* ── NOTIFICATIONS ── */
-.notif{background:var(--card);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--gold);}
-
-/* ── ADMIN ── */
-.admin-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
-.admin-stat{background:var(--card);border-radius:var(--radius-sm);padding:14px;}
-.admin-stat-val{font-size:22px;font-weight:800;color:var(--gold);margin-bottom:2px;}
-.admin-stat-label{font-size:11px;color:var(--text3);}
-.admin-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none;}
-.admin-tabs::-webkit-scrollbar{display:none;}
-.admin-tab{padding:8px 16px;border-radius:20px;border:none;background:var(--card);color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+/* Garder les classes existantes du site */
+.pay-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid var(--border);}
+.sec-label{font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.sec-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:14px;}
+.vip-card{background:var(--card);border-radius:14px;overflow:hidden;margin-bottom:14px;border:1px solid var(--border);}
+.vip-head{padding:12px 14px 0;}
+.vip-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.vip-btn{padding:12px;border-radius:11px;border:none;font-size:14px;font-weight:700;cursor:pointer;width:100%;transition:all 0.2s;}
+.admin-tab{padding:7px 14px;border-radius:20px;border:none;background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .admin-tab.active{background:var(--gold);color:#000;}
-.admin-row{background:var(--card);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;border:1px solid var(--border);}
-.appr-btn{padding:8px 14px;border-radius:8px;border:none;background:rgba(0,196,140,0.15);color:var(--green);font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;}
-.rej-btn{padding:8px 12px;border-radius:8px;border:none;background:rgba(255,82,82,0.12);color:var(--red);font-size:12px;font-weight:700;cursor:pointer;}
-
-/* ── MODALS ── */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:800;display:none;align-items:flex-end;justify-content:center;}
-.modal.open{display:flex;}
-.modal-box{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;}
-.modal-title{font-size:18px;font-weight:800;margin-bottom:16px;}
-
-/* ── OPERATOR BUTTONS ── */
-.op-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
-.op-btn{padding:14px;border-radius:var(--radius-sm);border:2px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;}
-.op-btn.active{border-color:var(--gold);background:rgba(245,166,35,0.1);}
-
-/* ── SPINNER ── */
-#spinner{position:fixed;inset:0;background:rgba(11,15,26,0.8);z-index:900;display:none;align-items:center;justify-content:center;}
-#spinner.show{display:flex;}
-.spin-circle{width:44px;height:44px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+.admin-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none;padding-bottom:2px;}
+.admin-tabs::-webkit-scrollbar{display:none;}
+.admin-row{background:var(--card);border-radius:12px;padding:12px;margin-bottom:8px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.appr-btn{padding:7px 12px;border-radius:8px;border:none;background:rgba(0,196,140,0.15);color:var(--green);font-size:12px;font-weight:700;cursor:pointer;}
+.rej-btn{padding:7px 10px;border-radius:8px;border:none;background:rgba(255,82,82,0.12);color:var(--red);font-size:12px;font-weight:700;cursor:pointer;}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:28px 0;}
+.sep{height:1px;background:var(--border);margin:10px 0;}
+.tab{padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer;white-space:nowrap;transition:all 0.2s;font-weight:500;}
+.tab.active{background:var(--gold);border-color:var(--gold);color:#000;font-weight:700;}
 @keyframes spin{to{transform:rotate(360deg);}}
-
-/* ── TOAST ── */
-#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--card2);color:var(--text);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:1000;opacity:0;transition:opacity 0.3s;white-space:nowrap;max-width:90vw;text-align:center;}
-#toast.show{opacity:1;}
-
-/* ── MISC ── */
-.empty{text-align:center;color:var(--text3);font-size:13px;padding:32px 0;}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
-.badge-green{background:rgba(0,196,140,0.12);color:var(--green);}
-.badge-red{background:rgba(255,82,82,0.12);color:var(--red);}
-.badge-gold{background:rgba(245,166,35,0.12);color:var(--gold);}
-.sep{height:1px;background:var(--border);margin:12px 0;}
-select.inp{appearance:none;}
-textarea.inp{resize:none;}
 </style>
 </head>
 <body>
 
-<!-- SPINNER -->
-<div id="spinner"><div class="spin-circle"></div></div>
 
-<!-- TOAST -->
-<div id="toast"></div>
-
-<!-- LOAD SCREEN -->
-<div id="loadScreen">
-  <div class="load-logo">🌶️</div>
-  <div class="load-name">Green Pepper</div>
-  <div class="load-sub">Restaurant thaïlandais</div>
-  <div class="load-bar-wrap"><div class="load-bar" id="loadBar"></div></div>
-  <div id="loadMsg" style="font-size:12px;color:var(--text3);margin-top:12px;"></div>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<div id="loadScreen" style="position:fixed;inset:0;background:#0D1A0F;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;">
+  <div style="font-family:var(--font-head);font-size:28px;font-weight:800;color:#E8EAF0;margin-bottom:8px;">Invest<span style="color:#F4A800;">Pro</span></div>
+  <div style="color:#7A7F96;font-size:13px;margin-bottom:28px;">Chargement en cours...</div>
+  <div style="width:180px;height:3px;background:#1E2232;border-radius:2px;overflow:hidden;">
+    <div id="loadBar" style="height:100%;width:0%;background:#F4A800;border-radius:2px;transition:width 0.4s ease;"></div>
+  </div>
+  <div id="loadMsg" style="color:#4A4F66;font-size:11px;margin-top:12px;">Connexion à la base de données...</div>
 </div>
 
-<!-- AUTH WRAP -->
+<!-- AUTH REDESIGNED -->
 <div id="authWrap" style="display:none;">
-  <div class="auth-header">
-    <div class="auth-logo">🌶️</div>
-    <div class="auth-title">Green Pepper</div>
-    <div class="auth-sub">Investissez dans notre restaurant thaïlandais</div>
-  </div>
-  <div class="auth-body">
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabLogin" onclick="goLogin()">Connexion</button>
-      <button class="auth-tab" id="tabReg" onclick="goRegister()">Inscription</button>
+  <div class="auth-card">
+    <div class="auth-logo-wrap">
+      <span class="auth-logo-icon">🌶️</span>
+      <div class="auth-logo-name">Green Pepper</div>
+      <div class="auth-logo-sub">Restaurant thaïlandais</div>
     </div>
-
+    <div class="auth-tabs-wrap">
+      <button class="auth-tab-btn active" id="btnLogin" onclick="goLogin()">Connexion</button>
+      <button class="auth-tab-btn" id="btnReg" onclick="goRegister()">Inscription</button>
+    </div>
     <!-- LOGIN -->
-    <div id="loginForm">
-      <div class="inp-group">
-        <label class="inp-label">Email ou identifiant</label>
-        <input class="inp" id="fEmail" type="email" placeholder="votre@email.com">
+    <div id="pLogin">
+      <div class="field-group">
+        <label class="field-label">Email ou identifiant</label>
+        <input class="field-input" id="fEmail" type="email" placeholder="votre@email.com" autocomplete="email">
       </div>
-      <div class="inp-group">
-        <label class="inp-label">Mot de passe</label>
-        <input class="inp" id="fPass" type="password" placeholder="••••••••">
+      <div class="field-group">
+        <label class="field-label">Mot de passe</label>
+        <input class="field-input" id="fPass" type="password" placeholder="••••••••">
       </div>
-      <button class="btn btn-gold" onclick="doLogin()">Se connecter</button>
+      <button class="auth-submit" onclick="doLogin()">Se connecter</button>
     </div>
-
     <!-- REGISTER -->
-    <div id="regForm" style="display:none;">
-      <div class="inp-group">
-        <label class="inp-label">Nom complet</label>
-        <input class="inp" id="rName" type="text" placeholder="Nom complet">
+    <div id="pReg" style="display:none;">
+      <div class="field-group">
+        <label class="field-label">Nom complet</label>
+        <input class="field-input" id="rName" type="text" placeholder="Nom complet">
       </div>
-      <div class="inp-group">
-        <label class="inp-label">Adresse email</label>
-        <input class="inp" id="rEmail" type="email" placeholder="votre@email.com">
+      <div class="field-group">
+        <label class="field-label">Adresse email</label>
+        <input class="field-input" id="rEmail" type="email" placeholder="votre@email.com" autocomplete="email">
       </div>
-      <div class="inp-group">
-        <label class="inp-label">Téléphone</label>
-        <input class="inp" id="rPhone" type="tel" placeholder="6XXXXXXXX">
+      <div class="field-group">
+        <label class="field-label">Téléphone</label>
+        <input class="field-input" id="rPhone" type="tel" placeholder="6XXXXXXXX">
       </div>
-      <div class="inp-group">
-        <label class="inp-label">Mot de passe (commence par majuscule)</label>
-        <input class="inp" id="rPass" type="password" placeholder="Minimum 6 caractères">
+      <div class="field-group">
+        <label class="field-label">Mot de passe (commence par majuscule, 6+ car.)</label>
+        <input class="field-input" id="rPass" type="password" placeholder="Minimum 6 caractères">
       </div>
-      <div class="inp-group">
-        <label class="inp-label">Confirmer le mot de passe</label>
-        <input class="inp" id="rPass2" type="password" placeholder="Répétez le mot de passe">
+      <div class="field-group">
+        <label class="field-label">Confirmer le mot de passe</label>
+        <input class="field-input" id="rPass2" type="password" placeholder="Répétez le mot de passe">
       </div>
-      <div class="inp-group">
-        <label class="inp-label">Code parrain (optionnel)</label>
-        <input class="inp" id="rRef" type="text" placeholder="INV-XXXXXX">
+      <div class="field-group">
+        <label class="field-label">Code parrain (optionnel)</label>
+        <input class="field-input" id="rRef" type="text" placeholder="INV-XXXXXX">
       </div>
-      <button class="btn btn-gold" onclick="doRegister()">Créer mon compte</button>
+      <button class="auth-submit" onclick="doRegister()">Créer mon compte</button>
     </div>
-
-    <div class="auth-err" id="authErr"></div>
+    <div id="authErr" style="color:var(--red);font-size:13px;text-align:center;margin-top:12px;min-height:18px;"></div>
   </div>
 </div>
 
 <!-- TOP BAR -->
 <div id="topBar">
-  <div class="top-logo">
-    <span class="top-logo-icon">🌶️</span>
-    <span class="top-logo-name">Green Pepper</span>
+  <div class="top-brand">
+    <span class="top-brand-icon">🌶️</span>
+    <span class="top-brand-name">Green Pepper</span>
   </div>
   <div class="top-right">
-    <div id="syncDot"></div>
-    <div class="top-bal">
-      <span class="top-bal-dep" id="topDepBal">0 FCFA 💳</span>
-      <span class="top-bal-wd" id="topWdBal">0 FCFA 💸</span>
+    <div id="syncDot" style="width:7px;height:7px;border-radius:50%;background:var(--green);display:none;box-shadow:0 0 6px var(--green);"></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;">
+      <span class="top-bal-dep" id="topDepBal"></span>
+      <span class="top-bal-wd" id="topWdBal"></span>
     </div>
-    <button id="adminBtn" style="display:none;" onclick="goPage('admin')" class="btn-logout" style="color:var(--gold);border-color:rgba(245,166,35,0.3);">⚙️</button>
-    <button class="btn-logout" onclick="doLogout()">Déco</button>
+    <button id="adminBtn" style="display:none;" onclick="goPage('admin')">⚙️ Admin</button>
+    <button class="btn-deconnect" onclick="doLogout()">Déco</button>
   </div>
 </div>
 
-<!-- APP WRAP -->
+<!-- APP -->
 <div id="appWrap">
 
 <!-- BOTTOM NAV -->
 <nav id="mainNav">
   <button class="nav-item" onclick="goPage('dashboard')" data-page="dashboard">
-    <div class="nav-icon">📊</div>
-    <span class="nav-label">Tableau</span>
-  </button>
+    <div class="nav-icon">📊</div><span class="nav-label">Tableau</span></button>
   <button class="nav-item" onclick="goPage('invest')" data-page="invest">
-    <div class="nav-icon">🌶️</div>
-    <span class="nav-label">Carte</span>
-  </button>
+    <div class="nav-icon">🌶️</div><span class="nav-label">Carte</span></button>
   <button class="nav-item" onclick="goPage('deposit')" data-page="deposit">
-    <div class="nav-icon">💳</div>
-    <span class="nav-label">Dépôt</span>
-  </button>
+    <div class="nav-icon">💳</div><span class="nav-label">Dépôt</span></button>
   <button class="nav-item" onclick="goPage('withdraw')" data-page="withdraw">
-    <div class="nav-icon">💸</div>
-    <span class="nav-label">Retrait</span>
-  </button>
+    <div class="nav-icon">💸</div><span class="nav-label">Retrait</span></button>
   <button class="nav-item" onclick="goPage('history')" data-page="history">
-    <div class="nav-icon">📋</div>
-    <span class="nav-label">Historique</span>
-  </button>
+    <div class="nav-icon">📋</div><span class="nav-label">Historique</span></button>
   <button class="nav-item" onclick="goPage('share')" data-page="share">
-    <div class="nav-icon">🔗</div>
-    <span class="nav-label">Partager</span>
-  </button>
+    <div class="nav-icon">🔗</div><span class="nav-label">Partager</span></button>
   <button class="nav-item" onclick="goPage('cgu')" data-page="cgu">
-    <div class="nav-icon">📄</div>
-    <span class="nav-label">CGU</span>
-  </button>
+    <div class="nav-icon">📄</div><span class="nav-label">CGU</span></button>
   <button class="nav-item" onclick="goPage('profile')" data-page="profile">
-    <div class="nav-icon">👤</div>
-    <span class="nav-label">Profil</span>
-  </button>
+    <div class="nav-icon">👤</div><span class="nav-label">Profil</span></button>
   <button class="nav-item" onclick="goPage('admin')" data-page="admin" id="adminNavBtn" style="display:none;">
     <div class="nav-icon" style="background:rgba(74,144,217,0.15);">⚙️</div>
-    <span class="nav-label" style="color:var(--blue);">Admin</span>
-  </button>
+    <span class="nav-label" style="color:var(--blue);">Admin</span></button>
 </nav>
 
 <div class="page active" id="page-dashboard">
@@ -641,55 +640,29 @@ textarea.inp{resize:none;}
 <div id="a-notifs" style="display:none;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;"><div class="sec-label">Notifications</div><button onclick="markAllRead()" style="padding:3px 9px;border-radius:5px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--muted);font-size:10px;cursor:pointer;">Tout lu</button></div><div id="notifList"></div></div>
 </div>
 
-<!-- MODAL PAIEMENT RETRAIT -->
-<div class="modal" id="payModal">
-  <div class="modal-box">
-    <div class="modal-title">💸 Envoyer le paiement</div>
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;color:var(--text3);margin-bottom:4px;">Bénéficiaire</div>
-      <div style="font-size:16px;font-weight:700;" id="pmName"></div>
-    </div>
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;color:var(--text3);margin-bottom:4px;">Numéro</div>
-      <div style="font-size:16px;font-weight:700;" id="pmTel"></div>
-    </div>
-    <div style="margin-bottom:20px;">
-      <div style="font-size:13px;color:var(--text3);margin-bottom:4px;">Montant net à envoyer</div>
-      <div style="font-size:24px;font-weight:800;color:var(--green);" id="pmAmt"></div>
-    </div>
-    <a id="momoPayLink" href="#" style="display:block;padding:14px;border-radius:var(--radius);text-align:center;font-weight:800;font-size:15px;text-decoration:none;margin-bottom:10px;background:linear-gradient(135deg,var(--gold),#E8940F);color:#000;">📱 Ouvrir MoMo</a>
-    <button onclick="confirmPayDone()" class="btn btn-green">✅ Confirmer l'envoi</button>
-    <button onclick="closePayModal()" class="btn btn-outline">Annuler</button>
-  </div>
+<div id="payModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:2000;align-items:center;justify-content:center;">
+<div style="background:#1E2232;border:1px solid rgba(244,168,0,0.3);border-radius:17px;padding:24px;max-width:340px;width:90%;text-align:center;">
+<div style="font-size:28px;margin-bottom:8px;">💸</div>
+<div style="font-family:system-ui,sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;">Envoyer le paiement</div>
+<div style="background:#12151C;border-radius:9px;padding:11px;margin:11px 0;text-align:left;">
+<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;"><span style="color:#7A7F96;">Bénéficiaire</span><strong id="pmName"></strong></div>
+<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;"><span style="color:#7A7F96;">Numéro</span><strong id="pmTel"></strong></div>
+<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:#7A7F96;">Montant</span><strong style="color:#F4A800;" id="pmAmt"></strong></div>
+</div>
+<a id="momoPayLink" href="#" style="display:block;padding:10px;border-radius:8px;font-family:system-ui,sans-serif;font-weight:800;font-size:13px;text-decoration:none;margin-bottom:6px;"></a>
+<button onclick="confirmPayDone()" style="width:100%;padding:11px;border-radius:8px;border:none;cursor:pointer;background:var(--green);color:#000;font-family:system-ui,sans-serif;font-weight:800;font-size:13px;margin-bottom:6px;">✅ Paiement effectué</button>
+<button onclick="closePayModal()" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#7A7F96;font-family:system-ui,sans-serif;font-size:12px;cursor:pointer;">Annuler</button>
+</div>
+</div>
+<div class="bn-more-menu" id="moreMenu">
+  <button class="bn-more-item" onclick="goPage('history');bnActive('history');closeMoreMenu()">📋 Historique</button>
+  <button class="bn-more-item" onclick="goPage('share');bnActive('share');closeMoreMenu()">🔗 Partager</button>
+  <button class="bn-more-item" onclick="goPage('cgu');bnActive('cgu');closeMoreMenu()">📄 CGU</button>
+  <button class="bn-more-item" onclick="goPage('profile');bnActive('profile');closeMoreMenu()">👤 Profil</button>
+  <button class="bn-more-item" id="adminBtnMore" style="display:none;color:var(--orange);" onclick="goPage('admin');bnActive('admin');closeMoreMenu()">⚙️ Admin</button>
 </div>
 
-<!-- MODAL INVEST -->
-<div class="modal" id="investModal">
-  <div class="modal-box">
-    <div class="modal-title" id="mTitle"></div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:16px;" id="mSub"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-      <div class="vip-stat"><div class="vip-stat-label">Investissement</div><div class="vip-stat-val" id="mInvest"></div></div>
-      <div class="vip-stat"><div class="vip-stat-label">Gain/jour</div><div class="vip-stat-val" id="mDaily"></div></div>
-      <div class="vip-stat"><div class="vip-stat-label">Retrait min.</div><div class="vip-stat-val" id="mMin"></div></div>
-      <div class="vip-stat"><div class="vip-stat-label">Solde dispo</div><div class="vip-stat-val" id="mBal"></div></div>
-    </div>
-    <button onclick="confirmInvest()" class="btn btn-gold">Confirmer l'investissement</button>
-    <button onclick="closeModal()" class="btn btn-outline">Annuler</button>
-  </div>
 </div>
-
-<!-- MODAL ACTIVATION -->
-<div class="modal" id="activModal">
-  <div class="modal-box">
-    <div class="modal-title" id="activTitle">Activer ce niveau</div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:20px;" id="activInfo"></div>
-    <button onclick="doActivation()" class="btn btn-gold">Confirmer l'activation</button>
-    <button onclick="closeActivModal()" class="btn btn-outline">Annuler</button>
-  </div>
-</div>
-
-</div><!-- /appWrap -->
 
 <script>
 
@@ -2180,36 +2153,45 @@ document.addEventListener('click',function(e){var av=document.querySelector('.av
   else{showAuth();}
 })();
 
-// ── NAV ACTIVE STATE ──
-function updateNav(page){
-  document.querySelectorAll('.nav-item').forEach(function(btn){
+
+// ── NAV ACTIVE ──
+function setNavActive(page){
+  document.querySelectorAll('#mainNav .nav-item').forEach(function(btn){
     btn.classList.toggle('active', btn.dataset.page===page);
   });
 }
-var _origGoPage=goPage;
-goPage=function(p){_origGoPage(p);updateNav(p);};
+var _gp=goPage;
+goPage=function(p){_gp(p);setNavActive(p);};
 
 // ── TOP BAR BALANCES ──
-var _origUpdateUI=updateUI;
+var _ui=updateUI;
 updateUI=function(){
-  _origUpdateUI();
-  var td=document.getElementById('topDepBal');if(td)td.textContent=(S.depositBalance||0).toLocaleString()+' FCFA 💳';
-  var tw=document.getElementById('topWdBal');if(tw)tw.textContent=(S.withdrawBalance||0).toLocaleString()+' FCFA 💸';
+  _ui();
+  var td=document.getElementById('topDepBal');
+  if(td)td.textContent='💳 '+(S.depositBalance||0).toLocaleString()+' FCFA';
+  var tw=document.getElementById('topWdBal');
+  if(tw)tw.textContent='💸 '+(S.withdrawBalance||0).toLocaleString()+' FCFA';
 };
 
-// ── SHOW/HIDE APP ELEMENTS ──
-var _origEnterApp=enterApp;
+// ── SHOW/HIDE NAV+BAR ──
+var _ea=enterApp;
 enterApp=function(){
-  _origEnterApp();
+  _ea.apply(this,arguments);
   var mn=document.getElementById('mainNav');if(mn)mn.style.display='flex';
   var tb=document.getElementById('topBar');if(tb)tb.style.display='flex';
+  if(CU&&CU.isAdmin){
+    var anb=document.getElementById('adminNavBtn');if(anb)anb.style.display='flex';
+    var ab=document.getElementById('adminBtn');if(ab)ab.style.display='block';
+  }
 };
-var _origDoLogout=doLogout;
+var _dl=doLogout;
 doLogout=function(){
-  _origDoLogout();
+  _dl();
   var mn=document.getElementById('mainNav');if(mn)mn.style.display='none';
   var tb=document.getElementById('topBar');if(tb)tb.style.display='none';
 };
+
 </script>
 </body>
-</html>
+</html<div id="spinner" style="position:fixed;inset:0;background:rgba(11,15,26,0.8);z-index:900;display:none;align-items:center;justify-content:center;"><div style="width:44px;height:44px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;"></div></div>
+>
