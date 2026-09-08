@@ -797,6 +797,13 @@ function showAuth(){
   }
   document.getElementById('authWrap').style.display='flex';
   document.getElementById('appWrap').style.display='none';
+  // Cacher nav et top bar
+  (function(){
+    var mn=document.getElementById('mainNav');if(mn)mn.style.display='none';
+    var tb=document.getElementById('topBar');if(tb)tb.style.display='none';
+    var anb=document.getElementById('adminNavBtn');if(anb)anb.style.display='none';
+    var ab=document.getElementById('adminBtn');if(ab)ab.style.display='none';
+  })();
 }
 
 // ── STATE ──
@@ -948,6 +955,11 @@ var ls2=document.getElementById('loadScreen');
   if(!CU.isAdmin){var sd=document.getElementById('syncDot');if(sd)sd.style.display='block';}
   document.getElementById('authWrap').style.display='none';
   document.getElementById('appWrap').style.display='block';
+  // Afficher nav footer et top bar
+  (function(){
+    var mn=document.getElementById('mainNav');if(mn)mn.style.display='flex';
+    var tb=document.getElementById('topBar');if(tb)tb.style.display='flex';
+  })();
 
 if(!CU.isAdmin){
 // Load fresh user data from DB
@@ -989,8 +1001,10 @@ if(CU.isAdmin)document.getElementById('notifBell').style.display='block';
 updateUI();
 goPage(CU.isAdmin?'admin':'dashboard');if(CU.isAdmin)aTab('users');
   if(CU.isAdmin){
-    // Admin arrive sur onglet Utilisateurs
     setTimeout(function(){ aTab('users'); },300);
+    // Afficher bouton admin dans nav
+    var _anb=document.getElementById('adminNavBtn');if(_anb)_anb.style.display='flex';
+    var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='block';
   }
 if(CU.isAdmin)setInterval(function(){if(document.getElementById('page-admin').classList.contains('active'))renderAdmin();},30000);
 if(!CU.isAdmin){
@@ -2161,7 +2175,13 @@ function setNavActive(page){
   });
 }
 var _gp=goPage;
-goPage=function(p){_gp(p);setNavActive(p);};
+goPage=function(p){
+  _gp(p);
+  // Nav active
+  document.querySelectorAll('#mainNav .nav-item').forEach(function(btn){
+    btn.classList.toggle('active', btn.dataset.page===p);
+  });
+};
 
 // ── TOP BAR BALANCES ──
 var _ui=updateUI;
