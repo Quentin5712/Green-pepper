@@ -662,7 +662,30 @@ body{background:var(--dark);color:var(--text);font-family:var(--font-body);}
   <button class="bn-more-item" id="adminBtnMore" style="display:none;color:var(--orange);" onclick="goPage('admin');bnActive('admin');closeMoreMenu()">⚙️ Admin</button>
 </div>
 
+
+
 </div>
+<!-- MODAL INVESTISSEMENT -->
+<div id="modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:800;display:none;align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeModal()">
+  <div style="background:var(--dark2,#141B2D);border-radius:24px 24px 0 0;padding:22px 18px 40px;width:100%;max-width:480px;">
+    <div style="font-size:18px;font-weight:800;margin-bottom:6px;" id="mTitle"></div>
+    <div style="font-size:13px;color:var(--muted,#8892A4);margin-bottom:14px;" id="mSub"></div>
+    <div id="mBody"></div>
+    <button onclick="confirmInvest()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--gold,#F5A623),#E8940F);border:none;border-radius:13px;color:#000;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;">Confirmer l'investissement</button>
+    <button onclick="closeModal()" style="width:100%;padding:12px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:13px;color:var(--muted,#8892A4);font-size:14px;cursor:pointer;margin-top:8px;">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL ACTIVATION VIP -->
+<div id="activModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:800;display:none;align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeActivModal()">
+  <div style="background:var(--dark2,#141B2D);border-radius:24px 24px 0 0;padding:22px 18px 40px;width:100%;max-width:480px;">
+    <div style="font-size:18px;font-weight:800;margin-bottom:10px;" id="activTitle">Activer ce niveau</div>
+    <div style="font-size:13px;color:var(--muted,#8892A4);margin-bottom:20px;" id="activInfo"></div>
+    <button onclick="doActivation()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--gold,#F5A623),#E8940F);border:none;border-radius:13px;color:#000;font-size:15px;font-weight:800;cursor:pointer;">Confirmer l'activation</button>
+    <button onclick="closeActivModal()" style="width:100%;padding:12px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:13px;color:var(--muted,#8892A4);font-size:14px;cursor:pointer;margin-top:8px;">Annuler</button>
+  </div>
+</div>
+
 
 <script>
 
