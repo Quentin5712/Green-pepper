@@ -223,6 +223,15 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <div class="stat-card"><div class="stat-val" id="statUsers">0</div><div class="stat-label">👤 Utilisateurs</div></div>
     </div>
 
+    <!-- Frais de livraison -->
+    <div class="section-title">🚚 Frais de livraison</div>
+    <div class="add-prod-form" style="margin-bottom:16px;">
+      <label class="form-label">Frais de livraison (FCFA)</label>
+      <input class="inp" id="deliveryFee" type="number" placeholder="Ex: 500">
+      <button class="btn-add-prod" onclick="saveDeliveryFee()" style="background:linear-gradient(135deg,var(--blue),#357ABD);">💾 Enregistrer</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">Actuel: <span id="currentFee" style="color:var(--gold);font-weight:700;">0 FCFA</span></div>
+    </div>
+
     <!-- Ajouter produit -->
     <div class="section-title">➕ Ajouter un produit</div>
     <div class="add-prod-form">
@@ -291,18 +300,74 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div style="font-size:18px;font-weight:800;margin-bottom:16px;">🛒 Mon Panier</div>
     <div id="cartItems"></div>
     <div class="cart-total">Total : <span id="cartTotal" style="color:var(--gold);">0 FCFA</span></div>
-    <button class="btn-order" onclick="confirmOrder()">✅ Commander</button>
+    <button class="btn-order" onclick="openPayment()">✅ Commander & Payer</button>
     <button onclick="closeCart()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:12px;color:var(--muted);font-size:14px;cursor:pointer;margin-top:8px;">Fermer</button>
   </div>
 </div>
 
-<!-- ══ CONFIRM ORDER MODAL ══ -->
-<div id="orderModal" onclick="if(event.target===this)document.getElementById('orderModal').classList.remove('open')">
-  <div class="order-box">
-    <div style="font-size:40px;text-align:center;margin-bottom:12px;">✅</div>
-    <div style="font-size:18px;font-weight:800;text-align:center;margin-bottom:8px;">Commande confirmée !</div>
-    <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;">Votre commande a été enregistrée. Nous vous contacterons pour la livraison.</div>
-    <button onclick="document.getElementById('orderModal').classList.remove('open')" style="width:100%;padding:13px;background:var(--gold);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:800;cursor:pointer;">OK</button>
+<!-- ══ MODAL PAIEMENT MOBILE ══ -->
+<div id="paymentModal" onclick="if(event.target===this)closePaymentModal()" style="position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:700;display:none;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 44px;width:100%;max-width:480px;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:36px;margin-bottom:8px;" id="payOperatorIcon">📱</div>
+      <div style="font-size:18px;font-weight:800;margin-bottom:4px;">Paiement Mobile</div>
+      <div style="font-size:13px;color:var(--muted);">Choisissez votre opérateur</div>
+    </div>
+
+    <!-- Étape 1: Choisir opérateur -->
+    <div id="payStep1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <button onclick="selectOperator('mtn')" style="padding:16px;border-radius:14px;border:2px solid rgba(255,205,0,0.3);background:rgba(255,205,0,0.08);cursor:pointer;transition:all 0.2s;" id="btnMTN">
+          <div style="font-size:28px;margin-bottom:6px;">🟡</div>
+          <div style="font-size:14px;font-weight:800;color:#FFCD00;">MTN MoMo</div>
+        </button>
+        <button onclick="selectOperator('om')" style="padding:16px;border-radius:14px;border:2px solid rgba(255,102,0,0.3);background:rgba(255,102,0,0.08);cursor:pointer;transition:all 0.2s;" id="btnOM">
+          <div style="font-size:28px;margin-bottom:6px;">🟠</div>
+          <div style="font-size:14px;font-weight:800;color:#FF6600;">Orange Money</div>
+        </button>
+      </div>
+      <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="color:var(--muted);font-size:13px;">Produits</span>
+          <span style="font-weight:700;" id="paySubtotal">0 FCFA</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="color:var(--muted);font-size:13px;">🚚 Livraison</span>
+          <span style="font-weight:700;color:var(--blue);" id="payDelivery">0 FCFA</span>
+        </div>
+        <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-weight:800;">Total à payer</span>
+          <span style="font-weight:800;color:var(--gold);font-size:18px;" id="payTotal">0 FCFA</span>
+        </div>
+      </div>
+      <input class="inp" id="payPhone" type="tel" placeholder="Numéro Mobile Money (6XXXXXXXX)" style="margin-bottom:8px;">
+      <input class="inp" id="deliveryLocation" type="text" placeholder="📍 Votre quartier / localisation pour la livraison" style="margin-bottom:8px;">
+      <button onclick="launchUSSD()" id="btnLaunchUSSD" disabled style="width:100%;padding:14px;border:none;border-radius:13px;color:#000;font-size:15px;font-weight:800;cursor:pointer;background:var(--card2);color:var(--muted);transition:all 0.2s;">📱 Lancer le paiement</button>
+    </div>
+
+    <!-- Étape 2: Confirmer après paiement -->
+    <div id="payStep2" style="display:none;">
+      <div style="background:var(--card);border-radius:14px;padding:20px;text-align:center;margin-bottom:20px;">
+        <div style="font-size:40px;margin-bottom:12px;" id="payStep2Icon">📱</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:8px;">Entrez votre PIN <span id="payStep2Op"></span></div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;">L'invitation de paiement a été envoyée sur votre téléphone.<br>Entrez votre PIN pour confirmer le paiement de <strong style="color:var(--gold);" id="payStep2Total"></strong></div>
+      </div>
+      <button onclick="confirmPaymentDone()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--green),#00A87A);border:none;border-radius:13px;color:#000;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px;">✅ J'ai confirmé le paiement</button>
+      <button onclick="backToStep1()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:13px;color:var(--muted);font-size:14px;cursor:pointer;">↩️ Retour</button>
+    </div>
+
+    <!-- Étape 3: Succès -->
+    <div id="payStep3" style="display:none;text-align:center;">
+      <div style="font-size:60px;margin-bottom:16px;">🎉</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:8px;">Commande confirmée !</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">Votre paiement a été reçu. Nous vous contacterons pour la livraison.</div>
+      <div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:20px;text-align:left;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Numéro de commande</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);" id="payOrderId"></div>
+      </div>
+      <button onclick="closePaymentModal()" style="width:100%;padding:14px;background:var(--gold);border:none;border-radius:13px;color:#000;font-size:15px;font-weight:800;cursor:pointer;">OK</button>
+    </div>
   </div>
 </div>
 
@@ -850,6 +915,7 @@ async function init(){
   }
   trackVisitor();
   await loadProducts();
+  await loadDeliveryFee();
   renderCats();
   filterProducts();
 }
