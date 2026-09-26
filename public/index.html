@@ -214,6 +214,7 @@ textarea.inp{resize:vertical;min-height:70px;}
     <div class="stat-c"><div class="stat-v" id="stC">0</div><div class="stat-l">📂 Catégories</div></div>
     <div class="stat-c"><div class="stat-v" id="stP">0</div><div class="stat-l">📦 Produits</div></div>
     <div class="stat-c"><div class="stat-v" id="stO">0</div><div class="stat-l">🛒 Commandes</div></div>
+    <div class="stat-c"><div class="stat-v" id="stU">0</div><div class="stat-l">👥 Utilisateurs</div></div>
   </div>
 
   <!-- Frais livraison -->
@@ -227,11 +228,14 @@ textarea.inp{resize:vertical;min-height:70px;}
   <!-- Créer catégorie -->
   <div class="sec-title" style="font-size:15px;">➕ Nouvelle catégorie</div>
   <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:16px;border:1px solid var(--border);">
-    <div class="img-upload" id="catImgWrap" onclick="document.getElementById('catImgFile').click()">
-      <img id="catImgPrev" alt="">
-      <div class="img-upload-hint" id="catImgHint">📸 Photo de la catégorie</div>
+    <div style="margin-bottom:10px;">
+      <div id="catImgPreview" style="width:100%;height:120px;background:var(--card2);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden;border:1px solid var(--border);">
+        <img id="catImgPrev" style="width:100%;height:100%;object-fit:cover;display:none;" alt="">
+        <span id="catImgHint" style="color:var(--muted);font-size:13px;">Aucune photo sélectionnée</span>
+      </div>
+      <input type="hidden" id="catImgFile" value="">
+      <button type="button" onclick="openPhotoPicker('catImgFile','catImgPrev','catImgHint')" style="width:100%;padding:10px;background:var(--card2);border:1px dashed var(--border);border-radius:var(--rs);color:var(--muted);font-size:13px;cursor:pointer;">📁 Choisir dans mes photos</button>
     </div>
-    <input type="file" id="catImgFile" accept="image/*" style="display:none;" onchange="prevImg(this,'catImgPrev','catImgHint')">
     <label class="label">Nom de la catégorie</label>
     <input class="inp" id="catName" placeholder="Ex: Plats chauds, Boissons...">
     <label class="label">Description (optionnel)</label>
@@ -246,11 +250,14 @@ textarea.inp{resize:vertical;min-height:70px;}
   <!-- Ajouter produit -->
   <div class="sec-title" style="font-size:15px;">➕ Ajouter un produit</div>
   <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:16px;border:1px solid var(--border);">
-    <div class="img-upload" id="prodImgWrap" onclick="document.getElementById('prodImgFile').click()">
-      <img id="prodImgPrev" alt="">
-      <div class="img-upload-hint" id="prodImgHint">📸 Photo du produit</div>
+    <div style="margin-bottom:10px;">
+      <div style="width:100%;height:120px;background:var(--card2);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden;border:1px solid var(--border);">
+        <img id="prodImgPrev" style="width:100%;height:100%;object-fit:cover;display:none;" alt="">
+        <span id="prodImgHint" style="color:var(--muted);font-size:13px;">Aucune photo sélectionnée</span>
+      </div>
+      <input type="hidden" id="prodImgFile" value="">
+      <button type="button" onclick="openPhotoPicker('prodImgFile','prodImgPrev','prodImgHint')" style="width:100%;padding:10px;background:var(--card2);border:1px dashed var(--border);border-radius:var(--rs);color:var(--muted);font-size:13px;cursor:pointer;">📁 Choisir dans mes photos</button>
     </div>
-    <input type="file" id="prodImgFile" accept="image/*" style="display:none;" onchange="prevImg(this,'prodImgPrev','prodImgHint')">
     <label class="label">Catégorie</label>
     <select class="inp" id="prodCat"><option value="">-- Choisir une catégorie --</option></select>
     <label class="label">Nom du produit</label>
@@ -262,6 +269,18 @@ textarea.inp{resize:vertical;min-height:70px;}
       <div><label class="label">Stock</label><input class="inp" id="prodStock" type="number" placeholder="0" style="margin:0;"></div>
     </div>
     <button class="btn-primary" onclick="addProduct()" style="margin-top:10px;">➕ Ajouter au marché</button>
+  </div>
+
+  <!-- Utilisateurs -->
+  <div class="sec-title" style="font-size:15px;">👥 Utilisateurs</div>
+  <div id="usersSection">
+    <div id="usersPinWrap" style="display:flex;gap:8px;margin-bottom:12px;">
+      <input class="inp" id="usersPinInp" type="password" placeholder="••••" style="margin:0;flex:1;letter-spacing:4px;" maxlength="10">
+      <button onclick="unlockUsers()" style="padding:0 16px;background:var(--purple);border:none;border-radius:var(--rs);color:#fff;font-weight:700;cursor:pointer;font-size:13px;">🔓 Accéder</button>
+    </div>
+    <div id="usersContent" style="display:none;">
+      <div id="usersList"></div>
+    </div>
   </div>
 
   <!-- Commandes -->
@@ -347,11 +366,14 @@ textarea.inp{resize:vertical;min-height:70px;}
 <div id="editModal" onclick="if(event.target===this)closeEdit()">
   <div class="edit-box">
     <div style="font-size:17px;font-weight:800;margin-bottom:14px;">✏️ Modifier le produit</div>
-    <div class="img-upload" id="editImgWrap" onclick="document.getElementById('editImgFile').click()">
-      <img id="editImgPrev" alt="">
-      <div class="img-upload-hint" id="editImgHint">📸 Changer la photo</div>
+    <div style="margin-bottom:10px;">
+      <div style="width:100%;height:120px;background:var(--card2);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden;border:1px solid var(--border);">
+        <img id="editImgPrev" style="width:100%;height:100%;object-fit:cover;display:none;" alt="">
+        <span id="editImgHint" style="color:var(--muted);font-size:13px;">Photo actuelle</span>
+      </div>
+      <input type="hidden" id="editImgFile" value="">
+      <button type="button" onclick="openPhotoPicker('editImgFile','editImgPrev','editImgHint')" style="width:100%;padding:10px;background:var(--card2);border:1px dashed var(--border);border-radius:var(--rs);color:var(--muted);font-size:13px;cursor:pointer;">📁 Changer la photo</button>
     </div>
-    <input type="file" id="editImgFile" accept="image/*" style="display:none;" onchange="prevImg(this,'editImgPrev','editImgHint')">
     <input type="hidden" id="editProdId">
     <label class="label">Nom</label>
     <input class="inp" id="editName">
@@ -363,6 +385,20 @@ textarea.inp{resize:vertical;min-height:70px;}
     </div>
     <button class="btn-primary" onclick="saveEdit()" style="margin-top:10px;">💾 Enregistrer</button>
     <button onclick="closeEdit()" style="width:100%;padding:11px;background:none;border:1px solid var(--border);border-radius:var(--rs);color:var(--muted);font-size:13px;cursor:pointer;margin-top:8px;">Annuler</button>
+  </div>
+</div>
+
+<!-- PHOTO PICKER MODAL -->
+<div id="photoPickerModal" onclick="if(event.target===this)closePhotoPicker()" style="position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:800;display:none;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--surface);border-radius:24px 24px 0 0;padding:20px 16px 44px;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-size:17px;font-weight:800;">📁 Mes photos</div>
+      <button onclick="closePhotoPicker()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Photos disponibles dans le dossier /uploads du serveur</div>
+    <div id="photoGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);">Chargement...</div>
+    </div>
   </div>
 </div>
 
@@ -656,7 +692,7 @@ function startPoll(ref){
   clearInterval(_poll);
   _poll=setInterval(async function(){
     try{
-      var r=await fetch('/api/paiement/statut/'+ref);
+      var r=await fetch(window.location.origin+'/api/paiement/statut/'+ref);
       var d=await r.json();
       if(d.status==='SUCCESSFUL'){clearInterval(_poll);await finishOrder();}
       else if(d.status==='FAILED'||d.status==='REJECTED'){
@@ -833,6 +869,8 @@ async function renderAdmin(){
     ohtml+='</div>';
   });
   document.getElementById('adminOrders').innerHTML=ohtml;
+  // Si déjà déverrouillé, recharger la liste users
+  if(USERS_UNLOCKED) renderUsers();
 }
 
 async function saveFee(){
@@ -845,19 +883,18 @@ async function saveFee(){
 async function addCategory(){
   var name=document.getElementById('catName').value.trim();
   var desc=document.getElementById('catDesc').value.trim();
-  var file=document.getElementById('catImgFile').files[0];
+  var catImgEl=document.getElementById('catImgFile');
+  var imgUrl=catImgEl?catImgEl.value:'';
   if(!name){toast('Nom requis','err');return;}
   sp(true);
-  var img='';
-  if(file)img=await compressImg(file);
-  var cat={id:'cat'+Date.now(),name:name,desc:desc,img:img,createdAt:new Date().toISOString()};
+  var cat={id:'cat'+Date.now(),name:name,desc:desc,img:imgUrl,createdAt:new Date().toISOString()};
   await dbUp(function(d){d.categories=d.categories||[];d.categories.push(cat);return d;});
   sp(false);
   document.getElementById('catName').value='';
   document.getElementById('catDesc').value='';
+  if(catImgEl)catImgEl.value='';
   document.getElementById('catImgPrev').style.display='none';
-  document.getElementById('catImgHint').style.display='';
-  document.getElementById('catImgFile').value='';
+  var ch=document.getElementById('catImgHint');if(ch)ch.style.display='block';
   toast('Catégorie "'+name+'" créée ✅','ok');
   renderAdmin();
 }
@@ -928,18 +965,96 @@ async function saveEdit(){
   var desc=document.getElementById('editDesc').value.trim();
   var price=Number(document.getElementById('editPrice').value);
   var stock=Number(document.getElementById('editStock').value);
-  var file=document.getElementById('editImgFile').files[0];
+  var editHidden=document.getElementById('editImgFile');
+  var imgUrl=(editHidden&&editHidden.value)||EDIT_IMG||'';
   if(!name||!price){toast('Nom et prix requis','err');return;}
   sp(true);
-  var img=EDIT_IMG;
-  if(file)img=await compressImg(file);
   await dbUp(function(d){
     var p=(d.products||[]).find(function(x){return x.id===id;});
-    if(p){p.name=name;p.desc=desc;p.price=price;p.stock=stock;if(img)p.img=img;}
+    if(p){p.name=name;p.desc=desc;p.price=price;p.stock=stock;if(imgUrl)p.img=imgUrl;}
     return d;
   });
   sp(false);closeEdit();
   toast('Produit modifié ✅','ok');renderAdmin();
+}
+
+// ═══ IMAGE UPLOAD ═══
+async function uploadImg(file){
+  if(!file)return'';
+  var compressed=await compressImg(file);
+  // Toujours utiliser base64 comme fallback fiable
+  // Tenter upload serveur d'abord
+  try{
+    var arr=compressed.split(','),mime=arr[0].match(/:(.*?);/)[1];
+    var bstr=atob(arr[1]),n=bstr.length,u8=new Uint8Array(n);
+    while(n--)u8[n]=bstr.charCodeAt(n);
+    var blob=new Blob([u8],{type:mime});
+    var fd=new FormData();fd.append('image',blob,'photo.jpg');
+    var base=window.location.origin;
+    var r=await fetch(base+'/api/upload',{method:'POST',body:fd});
+    if(r.ok){
+      var data=await r.json();
+      if(data.url)return window.location.origin+data.url;
+    }
+  }catch(e){}
+  // Fallback: stocker en base64 directement dans JSONBin
+  // (image déjà compressée à ~50-80KB)
+  return compressed;
+}
+
+// ═══ UTILISATEURS ADMIN (PIN 1239) ═══
+var USERS_UNLOCKED=false;
+async function unlockUsers(){
+  var pin=document.getElementById('usersPinInp').value;
+  if(pin!=='1239'){toast('PIN incorrect','err');return;}
+  USERS_UNLOCKED=true;
+  document.getElementById('usersContent').style.display='block';
+  document.getElementById('usersPinWrap').style.display='none';
+  await renderUsers();
+}
+async function renderUsers(){
+  var d=await dbRead();
+  var users=(d.users||[]).slice().sort(function(a,b){
+    return new Date(b.joinedAt||0)-new Date(a.joinedAt||0);
+  });
+  if(!users.length){
+    document.getElementById('usersList').innerHTML='<div style="text-align:center;padding:14px;color:var(--muted);">Aucun utilisateur inscrit.</div>';
+    return;
+  }
+  // Résumé
+  var today=new Date().toDateString();
+  var newToday=users.filter(function(u){return u.joinedAt&&new Date(u.joinedAt).toDateString()===today;}).length;
+  var html='';
+  html+='<div style="display:flex;gap:10px;margin-bottom:12px;">';
+  html+='<div style="background:var(--card);border-radius:var(--rs);padding:10px;flex:1;text-align:center;">';
+  html+='<div style="font-size:22px;font-weight:800;color:var(--gold);">'+users.length+'</div>';
+  html+='<div style="font-size:11px;color:var(--muted);">Total</div></div>';
+  html+='<div style="background:var(--card);border-radius:var(--rs);padding:10px;flex:1;text-align:center;">';
+  html+='<div style="font-size:22px;font-weight:800;color:var(--green);">'+newToday+'</div>';
+  html+='<div style="font-size:11px;color:var(--muted);">Nouveaux</div></div>';
+  html+='</div>';
+  users.forEach(function(u){
+    var oc=(d.orders||[]).filter(function(o){return o.userId===u.email;}).length;
+    var joined=u.joinedAt?new Date(u.joinedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    var isNew=u.joinedAt&&new Date(u.joinedAt).toDateString()===today;
+    html+='<div style="background:var(--card2);border-radius:var(--rs);padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">';
+    html+='<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--green));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#000;flex-shrink:0;">'+(u.name||'?')[0].toUpperCase()+'</div>';
+    html+='<div style="flex:1;">';
+    html+='<div style="font-size:13px;font-weight:700;">'+u.name+(isNew?'<span style="margin-left:6px;background:rgba(0,196,140,0.15);color:var(--green);font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700;">NOUVEAU</span>':'')+'</div>';
+    html+='<div style="font-size:11px;color:var(--muted);">'+u.email+'</div>';
+    html+='<div style="font-size:10px;color:var(--muted);margin-top:2px;">📱 '+(u.phone||'-')+' · 🛒 '+oc+' commande'+(oc!==1?'s':'')+' · 📅 '+joined+'</div>';
+    html+='</div>';
+    html+='<button class="btn-danger" onclick="delUser(this.dataset.id)" data-id="'+u.id+'">🗑️</button>';
+    html+='</div>';
+  });
+  document.getElementById('usersList').innerHTML=html;
+}
+async function delUser(uid){
+  if(!confirm('Supprimer cet utilisateur ?'))return;
+  sp(true);
+  await dbUp(function(d){d.users=(d.users||[]).filter(function(u){return u.id!==uid;});return d;});
+  sp(false);toast('Utilisateur supprimé','ok');
+  renderUsers();
 }
 
 async function markDone(oid){
@@ -959,6 +1074,56 @@ async function trackVisitor(){
     d.visitors.today=(d.visitors.today||0)+1;
     return d;
   });
+}
+
+// ═══ PHOTO PICKER ═══
+var _pickerTarget={fieldId:'',prevId:'',hintId:''};
+async function openPhotoPicker(fieldId,prevId,hintId){
+  _pickerTarget={fieldId:fieldId,prevId:prevId,hintId:hintId};
+  document.getElementById('photoPickerModal').style.display='flex';
+  await loadPhotos();
+}
+function closePhotoPicker(){document.getElementById('photoPickerModal').style.display='none';}
+async function loadPhotos(){
+  var grid=document.getElementById('photoGrid');
+  grid.innerHTML='';
+  var loading=document.createElement('div');
+  loading.style.cssText='grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);';
+  loading.textContent='Chargement...';
+  grid.appendChild(loading);
+  try{
+    var r=await fetch(window.location.origin+'/api/photos');
+    var data=await r.json();
+    var photos=data.photos||[];
+    grid.innerHTML='';
+    if(!photos.length){
+      grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);">Aucune photo.<br><small>Ajoutez vos images dans /public/uploads/</small></div>';
+      return;
+    }
+    photos.forEach(function(p){
+      var url=window.location.origin+'/uploads/'+p;
+      var img=document.createElement('img');
+      img.src=url;
+      img.loading='lazy';
+      img.style.cssText='cursor:pointer;border-radius:8px;object-fit:cover;width:100%;aspect-ratio:1;border:2px solid transparent;transition:.2s;';
+      img.onmouseover=function(){this.style.borderColor='#F5A623';};
+      img.onmouseout=function(){this.style.borderColor='transparent';};
+      (function(u){img.onclick=function(){selectPhoto(u);};})(url);
+      grid.appendChild(img);
+    });
+  }catch(e){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--red);">Erreur chargement photos.</div>';
+  }
+}
+
+function selectPhoto(url){
+  var f=document.getElementById(_pickerTarget.fieldId);
+  if(f)f.value=url;
+  var prev=document.getElementById(_pickerTarget.prevId);
+  if(prev){prev.src=url;prev.style.display='block';}
+  var hint=document.getElementById(_pickerTarget.hintId);
+  if(hint)hint.style.display='none';
+  closePhotoPicker();
 }
 
 // ═══ INIT ═══
