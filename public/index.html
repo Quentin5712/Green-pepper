@@ -269,11 +269,22 @@
       <button id="pyBtn" onclick="launchPay()" disabled class="w-full bg-[#ccc] text-black rounded-full py-3 font-bold text-[13px] border border-black cursor-not-allowed">Choisir un opérateur</button>
     </div>
     <!-- Step 2 -->
-    <div id="payS2" class="hidden text-center py-4">
-      <div id="pyOpIcon" class="text-[48px] mb-3">📱</div>
-      <p class="logo font-black text-[18px] mb-2">Confirmez sur votre téléphone</p>
-      <p class="text-[12px] text-black/50 mb-6 leading-relaxed">Une demande de <span id="pyTot2" class="font-bold text-black"></span> a été envoyée.<br>Entrez votre PIN pour confirmer.</p>
-      <button onclick="confirmPay()" class="w-full bg-black text-white rounded-full py-3 font-bold text-[13px] mb-2">✅ J'ai entré mon PIN</button>
+    <div id="payS2" class="hidden text-center py-2">
+      <div id="pyOpIcon" class="text-[52px] mb-3">📲</div>
+      <p class="logo font-black text-[18px] mb-3">Entrez votre PIN</p>
+      <div class="bg-[#F6F4F0] border border-black rounded-[14px] p-4 mb-4 text-left">
+        <p class="text-[11px] font-bold mb-2">Comment confirmer :</p>
+        <div class="flex items-start gap-2 mb-2"><span class="w-5 h-5 bg-black text-white rounded-full grid place-items-center text-[10px] flex-shrink-0">1</span><p class="text-[11px]">Une notification <strong id="pyOpName"></strong> apparaît sur votre téléphone</p></div>
+        <div class="flex items-start gap-2 mb-2"><span class="w-5 h-5 bg-black text-white rounded-full grid place-items-center text-[10px] flex-shrink-0">2</span><p class="text-[11px]">Ouvrez la notification et entrez votre <strong>code PIN</strong></p></div>
+        <div class="flex items-start gap-2"><span class="w-5 h-5 bg-black text-white rounded-full grid place-items-center text-[10px] flex-shrink-0">3</span><p class="text-[11px]"><span id="pyTot2" class="font-black"></span> seront débités de votre compte</p></div>
+      </div>
+      <p class="text-[11px] text-black/40 mb-4 leading-relaxed">La demande de paiement a été envoyée sur le numéro <strong id="pyPhoneShow" class="text-black"></strong>.<br>En attente de confirmation…</p>
+      <div class="flex gap-1.5 justify-center mb-5">
+        <div class="w-2 h-2 bg-black rounded-full animate-bounce" style="animation-delay:0ms"></div>
+        <div class="w-2 h-2 bg-black rounded-full animate-bounce" style="animation-delay:150ms"></div>
+        <div class="w-2 h-2 bg-black rounded-full animate-bounce" style="animation-delay:300ms"></div>
+      </div>
+      <button onclick="confirmPay()" class="w-full bg-black text-white rounded-full py-3 font-bold text-[13px] mb-2">✅ J'ai confirmé avec mon PIN</button>
       <button onclick="backPay()" class="w-full border border-black rounded-full py-3 text-[12px]">↩ Retour</button>
     </div>
     <!-- Step 3 -->
@@ -648,6 +659,8 @@ async function launchPay(){
     document.getElementById('payS1').classList.add('hidden');
     document.getElementById('payS2').classList.remove('hidden');
     document.getElementById('pyOpIcon').textContent=SEL_OP==='mtn'?'🟡':'🟠';
+    document.getElementById('pyOpName').textContent=SEL_OP==='mtn'?'MTN MoMo':'Orange Money';
+    document.getElementById('pyPhoneShow').textContent=ph;
     if(data.reference){
       clearInterval(POLL);
       POLL=setInterval(async()=>{
