@@ -877,6 +877,17 @@ function goProfile() { showView('profile'); }
 // ═══════════════════════════════
 // HERO
 // ═══════════════════════════════
+// Global product lookup map for safe cart adds
+const PROD_MAP = {};
+function regProd(p, mName) {
+  PROD_MAP[p.id] = { id: p.id, name: p.name, price: p.price, img: p.img || '', merchant: mName || '' };
+}
+function handleAddBtn(btn) {
+  const pid = btn.dataset.pid;
+  const prod = PROD_MAP[pid];
+  if (prod) addToCart(prod);
+}
+
 async function initHero() {
   if (!DB) { sp(true); await dbRead(); sp(false); }
   if (!DB) return;
@@ -897,19 +908,22 @@ async function initHero() {
   // Trending
   const tg = $('trendGrid');
   if (!prods.length) { tg.innerHTML = '<div class="col-span-5 py-8 text-center text-[#888] text-[13px]">Aucun produit pour l\'instant.</div>'; return; }
-  tg.innerHTML = prods.slice(0, 5).map(p => {
+  const trendProds = prods.slice(0, 5);
+  trendProds.forEach(p => { const m = merchs.find(x => x.id === p.merchantId); regProd(p, m?.storeName || m?.name || ''); });
+  tg.innerHTML = trendProds.map(p => {
     const m = merchs.find(x => x.id === p.merchantId);
     const out = p.stock <= 0;
+    const mName = m?.storeName || m?.name || '';
     return `<div class="pcard">
       <div class="h-[160px] md:h-[200px] bg-[#faf8f5] flex items-center justify-center overflow-hidden">
         ${p.img ? `<img src="${p.img}" class="w-full h-full object-cover">` : '<span class="text-5xl">🍽️</span>'}
       </div>
       <div class="p-3">
-        <p class="text-[9px] text-[#888] mb-0.5 font-medium tracking-widest uppercase">${m?.storeName || m?.name || ''}</p>
+        <p class="text-[9px] text-[#888] mb-0.5 font-medium tracking-widest uppercase">${mName}</p>
         <p class="text-[13px] font-medium mb-2 leading-tight">${p.name}</p>
         <div class="flex justify-between items-center">
           <span class="font-black text-[14px]">${Number(p.price).toLocaleString()} <span class="text-[10px] font-normal text-[#888]">FCFA</span></span>
-          <button onclick="event.stopPropagation();addToCart({id:'${p.id}',name:${JSON.stringify(p.name)},price:${p.price},img:'${p.img || ''}',merchant:'${m?.storeName || m?.name || ''}'})" ${out ? 'disabled' : ''} class="w-8 h-8 rounded-full flex items-center justify-center text-lg transition-colors ${out ? 'bg-[#f5f3ef] text-[#ccc] cursor-not-allowed' : 'bg-[#0a0a0a] text-white hover:bg-[#333]'}">+</button>
+          <button data-pid="${p.id}" onclick="event.stopPropagation();handleAddBtn(this)" ${out ? 'disabled' : ''} class="add-btn w-8 h-8 rounded-full flex items-center justify-center text-lg transition-colors ${out ? 'bg-[#f5f3ef] text-[#ccc] cursor-not-allowed' : 'bg-[#0a0a0a] text-white hover:bg-[#333]'}">+</button>
         </div>
       </div>
     </div>`;
@@ -982,6 +996,8 @@ function renderProdGrid(prods, mName) {
   const grid = $('mktProdGrid');
   txt('mktCount', prods.length + ' produit' + (prods.length !== 1 ? 's' : ''));
   if (!prods.length) { grid.innerHTML = '<div class="col-span-2 md:col-span-4 py-10 text-center text-[#888] text-[13px]">Aucun produit dans cette catégorie.</div>'; return; }
+  // Register products in global map for safe cart access
+  prods.forEach(p => regProd(p, mName));
   grid.innerHTML = prods.map(p => {
     const out = p.stock <= 0;
     return `<div class="pcard">
@@ -996,7 +1012,7 @@ function renderProdGrid(prods, mName) {
         <p class="text-[9px] ${out ? 'text-[#ff4d00]' : 'text-[#1b6b45]'} font-medium mb-2">${out ? 'Rupture de stock' : '✓ ' + p.stock + ' en stock'}</p>
         <div class="flex justify-between items-center">
           <span class="font-black text-[14px]">${Number(p.price).toLocaleString()} <span class="text-[9px] font-normal text-[#888]">FCFA</span></span>
-          <button onclick="addToCart({id:'${p.id}',name:${JSON.stringify(p.name)},price:${p.price},img:'${p.img || ''}',merchant:'${mName}'})" ${out ? 'disabled' : ''} class="w-8 h-8 rounded-full flex items-center justify-center text-lg transition-colors ${out ? 'bg-[#f5f3ef] text-[#ccc] cursor-not-allowed' : 'bg-[#0a0a0a] text-white hover:bg-[#333]'}">+</button>
+          <button data-pid="${p.id}" onclick="handleAddBtn(this)" ${out ? 'disabled' : ''} class="add-btn w-8 h-8 rounded-full flex items-center justify-center text-lg transition-colors ${out ? 'bg-[#f5f3ef] text-[#ccc] cursor-not-allowed' : 'bg-[#0a0a0a] text-white hover:bg-[#333]'}">+</button>
         </div>
       </div>
     </div>`;
