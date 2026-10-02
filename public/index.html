@@ -1705,13 +1705,42 @@ async function openPicker(target) {
   PICKER_TARGET = target;
   $('pickerContent').innerHTML = '<div class="py-8 text-center text-[#888] text-[13px]">Chargement…</div>';
   openModal('pickerModal');
+  // Déterminer le dossier selon le contexte (admin ou commerçant)
+  const isAdmin = target === 'acat' || target === 'aprod';
+  const merchantId = isAdmin ? 'admin' : (CU?.id || 'admin');
+  const apiUrl = '/api/photos/' + merchantId;
   try {
-    const r = await fetch('/api/photos'); const data = await r.json(); const photos = data.photos || [];
-    if (!photos.length) { $('pickerContent').innerHTML = '<div class="py-10 text-center"><div class="text-3xl mb-3">📁</div><p class="font-bold mb-1">Dossier vide</p><p class="text-[12px] text-[#888]">Ajoutez des images dans <code class="bg-[#f5f3ef] px-1 rounded">/public/uploads/</code> sur le serveur.</p></div>'; return; }
-    $('pickerContent').innerHTML = '<div class="pgrid">' + photos.map(p => `<div class="pitem" onclick="selectPhoto('/uploads/${p}')"><img src="/uploads/${p}" loading="lazy" onerror="this.closest('.pitem').remove()"></div>`).join('') + '</div>';
+    const r = await fetch(apiUrl);
+    const data = await r.json();
+    const photos = data.photos || [];
+    const folder = '/uploads/' + merchantId + '/';
+    // Bouton upload
+    const uploadBtn = `<label class="pitem flex items-center justify-center bg-[#f5f3ef] cursor-pointer border-2 border-dashed border-[#e0ddd8] hover:border-[#0a0a0a] transition-colors">
+      <div class="text-center"><div class="text-2xl mb-1">📤</div><p class="text-[10px] text-[#888]">Uploader</p></div>
+      <input type="file" accept="image/*" class="hidden" onchange="uploadPhoto(this,'${merchantId}')">
+    </label>`;
+    if (!photos.length) {
+      $('pickerContent').innerHTML = '<div class="pgrid">' + uploadBtn + '</div><p class="text-[11px] text-[#888] mt-3 text-center">Uploadez vos photos ou ajoutez-les dans <code class="bg-[#f5f3ef] px-1 rounded">/public/uploads/${merchantId}/</code></p>';
+      return;
+    }
+    $('pickerContent').innerHTML = '<div class="pgrid">' + uploadBtn +
+      photos.map(p => `<div class="pitem" onclick="selectPhoto('${folder}${p}')"><img src="${folder}${p}" loading="lazy" onerror="this.closest('.pitem').remove()"></div>`).join('') +
+      '</div>';
   } catch(e) {
     $('pickerContent').innerHTML = '<div class="py-10 text-center"><div class="text-3xl mb-3">⚠️</div><p class="font-bold text-[#ff4d00] mb-1">Serveur non disponible</p><p class="text-[12px] text-[#888]">Déployez avec <code>node server.js</code> sur Render.</p></div>';
   }
+}
+
+async function uploadPhoto(input, merchantId) {
+  const file = input.files[0]; if (!file) return;
+  const formData = new FormData(); formData.append('photo', file);
+  try {
+    sp(true);
+    const r = await fetch('/api/photos/' + merchantId, { method: 'POST', body: formData });
+    const data = await r.json(); sp(false);
+    if (data.url) { toast('Photo uploadée ✅'); openPicker(PICKER_TARGET); }
+    else toast('Erreur upload', 'err');
+  } catch(e) { sp(false); toast('Erreur upload', 'err'); }
 }
 
 function resetImgPrev(id, cb) {
