@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GREEN-PEPPER Market</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -111,6 +111,52 @@ input::placeholder,textarea::placeholder{color:#bbb}
 .row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #f5f3ef}
 .row:last-child{border-bottom:none}
 
+/* ── SAFE AREA INSETS (iPhone notch, Android cutout) ── */
+:root{
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+/* Header collé en haut sans être caché par la barre système */
+header.sticky{padding-top: var(--sat);}
+/* Contenu principal avec marges sûres */
+main{
+  padding-left: max(1rem, var(--sal));
+  padding-right: max(1rem, var(--sar));
+}
+/* Cart sidebar avec marge basse safe */
+.cart-panel{padding-bottom: calc(2rem + var(--sab));}
+/* Mobile nav avec marge basse safe */
+.mnav-panel{padding-bottom: calc(2rem + var(--sab));}
+
+/* ── TOUCH TARGETS — minimum 44px sur mobile ── */
+.btn{min-height:40px;}
+.tab{min-height:36px;}
+input,select{min-height:44px;}
+
+/* ── SCROLL SMOOTHING ── */
+html{scroll-behavior:smooth;-webkit-overflow-scrolling:touch;}
+
+/* ── IMAGE FIT — ne jamais déborder ── */
+img{max-width:100%;height:auto;}
+
+/* ── TABLES responsive ── */
+@media(max-width:639px){
+  .tbl thead{display:none}
+  .tbl tr{display:block;border:1px solid #f0ede8;border-radius:12px;margin-bottom:10px;padding:10px}
+  .tbl td{display:flex;justify-content:space-between;align-items:center;border:none;padding:4px 8px;font-size:12px}
+  .tbl td::before{content:attr(data-label);font-weight:600;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-right:8px}
+}
+
+/* ── STAT GRID mobile ── */
+@media(max-width:480px){
+  .stat-grid{grid-template-columns:repeat(3,1fr);}
+}
+
+/* ── OVERFLOW safe ── */
+.no-overflow{overflow-x:hidden;max-width:100vw;}
+
 /* PROG */
 .prog{height:4px;background:#f0ede8;border-radius:99px;overflow:hidden}
 .prog-fill{height:100%;border-radius:99px}
@@ -133,7 +179,7 @@ input::placeholder,textarea::placeholder{color:#bbb}
 @media(min-width:1024px){.stat-grid{grid-template-columns:repeat(6,1fr)}}
 </style>
 </head>
-<body>
+<body class="no-overflow">
 
 <!-- ANNOUNCE -->
 <div class="bg-[#0a0a0a] text-white text-[10px] md:text-[11px] tracking-[.15em] text-center py-2.5 px-4">
