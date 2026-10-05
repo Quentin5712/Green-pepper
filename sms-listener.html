@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InvestPro SMS Listener</title>
+<style>
+body{background:#0A0C10;color:#E8EAF0;font-family:system-ui,sans-serif;padding:20px;max-width:400px;margin:0 auto;}
+h2{color:#F4A800;font-size:18px;margin-bottom:5px;}
+.card{background:#1E2232;border:1px solid rgba(244,168,0,0.2);border-radius:12px;padding:16px;margin-bottom:12px;}
+.status{padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;}
+.ok{background:rgba(0,200,150,0.15);color:#00C896;}
+.err{background:rgba(255,77,77,0.15);color:#FF4D4D;}
+.log{background:#12151C;border-radius:8px;padding:10px;font-size:11px;color:#7A7F96;max-height:200px;overflow-y:auto;font-family:monospace;}
+button{width:100%;padding:12px;border-radius:9px;border:none;cursor:pointer;background:linear-gradient(135deg,#F4A800,#E69500);color:#0A0C10;font-weight:800;font-size:14px;margin-bottom:8px;}
+.red{background:linear-gradient(135deg,#FF4D4D,#CC0000);color:#fff;}
+input{width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid #2A2E3E;background:#12151C;color:#E8EAF0;font-size:13px;box-sizing:border-box;margin-bottom:8px;outline:none;}
+label{font-size:11px;color:#7A7F96;display:block;margin-bottom:3px;}
+</style>
+</head>
+<body>
+<h2>📱 InvestPro SMS Listener</h2>
+<p style="color:#7A7F96;font-size:12px;margin-bottom:16px;">Laissez cette page ouverte sur le téléphone admin pour la vérification automatique des dépôts.</p>
+
+<div class="card">
+  <label>URL du serveur InvestPro</label>
+  <input id="serverUrl" type="url" placeholder="https://investpro.onrender.com">
+  <label>Clé secrète admin</label>
+  <input id="adminKey" type="password" placeholder="Votre clé secrète">
+  <button onclick="startListener()">▶️ Démarrer la vérification</button>
+  <button class="red" onclick="stopListener()" style="display:none;" id="stopBtn">⏹️ Arrêter</button>
+</div>
+
+<div class="card">
+  <div id="status" class="status err">⛔ Non démarré</div>
+  <div style="font-size:11px;color:#7A7F96;margin-bottom:6px;">Logs :</div>
+  <div class="log" id="log">En attente...</div>
+</div>
+
+<div class="card">
+  <div style="font-size:12px;color:#7A7F96;margin-bottom:8px;">📋 Instructions :</div>
+  <div style="font-size:11px;color:#7A7F96;line-height:1.8;">
+    1. Entrez l'URL de votre serveur<br>
+    2. Entrez votre clé secrète admin<br>
+    3. Cliquez "Démarrer"<br>
+    4. <strong style="color:#F4A800;">Laissez cette page ouverte</strong><br>
+    5. Les dépôts sont vérifiés automatiquement toutes les 30 secondes
+  </div>
+</div>
+
+<script>
+var interval = null;
+var SERVER_URL = '';
+var ADMIN_KEY  = '';
+
+function log(msg, type){
+  var d = new Date().toLocaleTimeString('fr-FR');
+  var el = document.getElementById('log');
+  var color = type==='ok'?'#00C896': type==='err'?'#FF4D4D':'#7A7F96';
+  el.innerHTML = '<span style="color:'+color+';">['+d+'] '+msg+'</span><br>' + el.innerHTML;
+}
+
+function startListener(){
+  SERVER_URL = document.getElementById('serverUrl').value.trim();
+  ADMIN_KEY  = document.getElementById('adminKey').value.trim();
+  if(!SERVER_URL){alert('Entrez l\'URL du serveur');return;}
+  if(!ADMIN_KEY){alert('Entrez la clé admin');return;}
+  document.getElementById('status').className='status ok';
+  document.getElementById('status').textContent='✅ Vérification active';
+  document.getElementById('stopBtn').style.display='block';
+  log('Listener démarré','ok');
+  checkPendingDeposits();
+  interval = setInterval(checkPendingDeposits, 30000);
+}
+
+function stopListener(){
+  clearInterval(interval);
+  document.getElementById('status').className='status err';
+  document.getElementById('status').textContent='⛔ Arrêté';
+  document.getElementById('stopBtn').style.display='none';
+  log('Listener arrêté','err');
+}
+
+async function checkPendingDeposits(){
+  log('Vérification des dépôts en attente...');
+  try {
+    var r = await fetch(SERVER_URL+'/api/admin/sms-check', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({adminKey: ADMIN_KEY})
+    });
+    var data = await r.json();
+    if(data.approved && data.approved.length > 0){
+      data.approved.forEach(function(d){
+        log('✅ AUTO-APPROUVÉ: '+d.userName+' — '+d.amount+' FCFA ('+d.operator+')', 'ok');
+      });
+    } else if(data.checked !== undefined){
+      log(data.checked+' dépôt(s) vérifié(s), '+( data.approved||[]).length+' approuvé(s)');
+    }
+  } catch(e){
+    log('Erreur connexion serveur: '+e.message, 'err');
+  }
+}
+</script>
+</body>
+</html>
