@@ -1,60 +1,37 @@
-# InvestPro — Serveur Backend
+# Green Pepper Market — Déploiement Render
 
-## Stack
-- Node.js + Express
-- JSONBin.io (base de données)
+## Variables d'environnement (obligatoires sur Render)
 
-## Variables d'environnement (Render.com)
+```
+# JSONBin
+BIN_ID        = 6a4cdd5cf5f4af5e296bb50b
+API_KEY       = $2a$10$WiRdDM1vwwyaoA.yf/.XkuA/2173q1VIdQ56RJyfD4vGgp8U5tu.O
+PORT          = 3000
 
-| Variable   | Valeur                                                      |
-|------------|-------------------------------------------------------------|
-| BIN_ID     | 6a4cdd5cf5f4af5e296bb50b                                   |
-| API_KEY    | $2a$10$WiRdDM1vwwyaoA.yf/.XkuA/2173q1VIdQ56RJyfD4vGgp8U5tu.O |
-| ADMIN_KEY  | investpro_admin_secret_2024                                 |
-| PORT       | (automatique sur Render)                                    |
+# MTN MoMo PRODUCTION (obtenir sur developer.mtn.com)
+MOMO_SUBSCRIPTION_KEY = votre_clé_abonnement
+MOMO_API_USER         = votre_uuid_api_user
+MOMO_API_KEY          = votre_api_key
+MOMO_ENV              = mtncameroon
+CALLBACK_URL          = https://votre-app.onrender.com
 
-## Déploiement sur Render.com
+# Orange Money (optionnel, obtenir sur developer.orange.com)
+OM_CLIENT_ID      = votre_client_id
+OM_CLIENT_SECRET  = votre_client_secret
+OM_MERCHANT_KEY   = votre_merchant_key
+```
 
-1. Créer un compte sur render.com
-2. New → Web Service → Connect GitHub
-3. Sélectionner le repo
-4. Build Command : npm install
-5. Start Command : node server.js
-6. Ajouter les variables d'environnement ci-dessus
-7. Deploy !
+## Build & Start
+- Build command: `npm install`
+- Start command: `node server.js`
 
-## Routes API
+## Photos
+- Admin: `/public/uploads/admin/`
+- Commerçant ID "m123": `/public/uploads/m123/`
+- Upload via le picker dans le dashboard (bouton 📤)
 
-### Utilisateurs
-- POST /api/register
-- POST /api/login
-- POST /api/user/save
-- GET  /api/user?email=xxx
+## Connexion admin
+- Email: quentin | Mot de passe: Quentin
 
-### Transactions
-- POST /api/deposit
-- POST /api/withdraw
-
-### Admin
-- GET  /api/admin/data
-- POST /api/admin/deposit/approve
-- POST /api/admin/deposit/reject
-- POST /api/admin/withdraw/approve
-- POST /api/admin/withdraw/reject
-- POST /api/admin/invest/approve
-- POST /api/admin/user/delete
-- POST /api/admin/site
-- POST /api/admin/notifs/read
-- POST /api/admin/sms-verify
-
-### Utilitaires
-- GET  /api/ping
-- GET  /sms-listener
-
-## Test après déploiement
-Visitez : https://votre-app.onrender.com/api/ping
-Réponse attendue : {"ok":true,"msg":"InvestPro API OK"}
-
-## UptimeRobot (éviter l'endormissement)
-Configurer un monitor HTTP sur https://votre-app.onrender.com/api/ping
-Interval : 5 minutes
+## PIN clients (section Clients)
+- 1239

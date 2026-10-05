@@ -1,1 +1,34 @@
+# ════════════════════════════════════════════════════════════
+# .gitignore — Green Pepper Market
+# ════════════════════════════════════════════════════════════
 
+# ⚠️ JAMAIS commiter ces fichiers — ils contiennent des secrets
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dépendances (trop lourdes pour Git, npm install les recrée)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs serveur
+logs/
+*.log
+
+# Photos uploadées (trop lourdes, stockez sur un CDN en prod)
+# public/uploads/  ← décommentez si vous utilisez un CDN
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Migration (à supprimer après utilisation)
+migrate.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
