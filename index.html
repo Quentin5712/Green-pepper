@@ -128,17 +128,12 @@ input,select,textarea{min-height:44px}
 /* ════════════════════════════════════════
    MODALS — centrés sur PC, plein écran bas sur mobile
 ════════════════════════════════════════ */
-.modal{
-  position:fixed;inset:0;z-index:200;
-  background:rgba(0,0,0,0);pointer-events:none;
-  transition:background .22s;
-  display:flex;
-}
-.modal.open{background:rgba(0,0,0,.54);pointer-events:all}
+.modal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;padding:0}
+.modal.open{display:flex}
 
 /* Mobile : glisse du bas */
 @media(max-width:767px){
-  .modal.open{align-items:flex-end;justify-content:center;padding:0}
+  .modal{align-items:flex-end;justify-content:center;padding:0}
   .modal-box{
     width:100%;border-radius:22px 22px 0 0;
     max-height:92dvh;overflow-y:auto;
@@ -150,7 +145,7 @@ input,select,textarea{min-height:44px}
 }
 /* PC : centré */
 @media(min-width:768px){
-  .modal.open{align-items:center;justify-content:center;padding:16px}
+  .modal{align-items:center;justify-content:center;padding:16px}
   .modal-box{
     width:100%;max-width:480px;max-height:90vh;overflow-y:auto;
     border-radius:22px;
@@ -163,7 +158,7 @@ input,select,textarea{min-height:44px}
 /* ════════════════════════════════════════
    CART SIDEBAR
 ════════════════════════════════════════ */
-.cart-wrap{position:fixed;inset:0;z-index:150;pointer-events:none}
+.cart-wrap{display:none;position:fixed;inset:0;z-index:150}
 .cart-bg{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .25s}
 .cart-bg.open{background:rgba(0,0,0,.5);pointer-events:all}
 .cart-panel{
@@ -171,12 +166,12 @@ input,select,textarea{min-height:44px}
   background:#fff;display:flex;flex-direction:column;pointer-events:all;
   transform:translateX(100%);transition:transform .28s cubic-bezier(.32,0,.67,0);
 }
-.cart-panel.open{transform:translateX(0)}
+.cart-panel.open{transform:translateX(0)} .cart-wrap.visible{visibility:visible;pointer-events:none}
 
 /* ════════════════════════════════════════
    MOBILE NAV
 ════════════════════════════════════════ */
-.mnav{position:fixed;inset:0;z-index:180;pointer-events:none}
+.mnav{display:none;position:fixed;inset:0;z-index:180} 
 .mnav-bg{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .22s}
 .mnav-bg.open{background:rgba(0,0,0,.5);pointer-events:all}
 .mnav-panel{
@@ -966,11 +961,14 @@ function toast(msg, type = 'ok') {
 // MODALS
 // ═══════════════════════════════
 function openModal(id) {
-  const el=$(id); el.style.display='flex'; el.classList.add('open');
+  const el=$(id); if(!el) return;
+  el.style.display='flex';
+  requestAnimationFrame(()=>el.classList.add('open'));
   document.body.classList.add('no-scroll');
 }
 function closeModal(id) {
-  const el=$(id); el.classList.remove('open'); el.style.display='none';
+  const el=$(id); if(!el) return;
+  el.classList.remove('open'); el.style.display='none';
   document.body.classList.remove('no-scroll');
 }
 
@@ -991,13 +989,15 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#headerDrop') && !e.target.closest('[onclick="toggleDrop()"]')) closeDrop();
 });
 function openMNav() {
-  $('mNavPanel').classList.add('open');
-  $('mNavBg').classList.add('open');
+  const n=$('mNav'); if(n) n.style.display='block';
+  $('mNavPanel')?.classList.add('open');
+  $('mNavBg')?.classList.add('open');
   document.body.classList.add('no-scroll');
 }
 function closeMNav() {
-  $('mNavPanel').classList.remove('open');
-  $('mNavBg').classList.remove('open');
+  const n=$('mNav'); if(n) n.style.display='none';
+  $('mNavPanel')?.classList.remove('open');
+  $('mNavBg')?.classList.remove('open');
   document.body.classList.remove('no-scroll');
 }
 function toggleMSearch() { $('mSearchBar').classList.toggle('hidden'); }
@@ -1027,8 +1027,8 @@ function goProfile() { showView('profile'); }
 // ═══════════════════════════════
 // Global product lookup map for safe cart adds
 const PROD_MAP = {};
-function regProd(p, mName) {
-  PROD_MAP[p.id] = { id: p.id, name: p.name, price: p.price, img: p.img || '', merchant: mName || '' };
+function regProd(p, mName, m) {
+  PROD_MAP[p.id] = { id: p.id, name: p.name, price: p.price, img: p.img || '', merchant: mName || '', whatsapp: m?.whatsapp||'', phone: m?.phone||'' };
 }
 function handleAddBtn(btn) {
   const pid = btn.dataset.pid;
@@ -1057,7 +1057,7 @@ async function initHero() {
   const tg = $('trendGrid');
   if (!prods.length) { tg.innerHTML = '<div class="col-span-5 py-8 text-center text-[#888] text-[13px]">Aucun produit pour l\'instant.</div>'; return; }
   const trendProds = prods.slice(0, 5);
-  trendProds.forEach(p => { const m = merchs.find(x => x.id === p.merchantId); regProd(p, m?.storeName || m?.name || ''); });
+  trendProds.forEach(p => { const m = merchs.find(x => x.id === p.merchantId); regProd(p, m?.storeName || m?.name || '', m); });
   tg.innerHTML = trendProds.map(p => {
     const m = merchs.find(x => x.id === p.merchantId);
     const out = p.stock <= 0;
@@ -1145,7 +1145,7 @@ function renderProdGrid(prods, mName) {
   txt('mktCount', prods.length + ' produit' + (prods.length !== 1 ? 's' : ''));
   if (!prods.length) { grid.innerHTML = '<div class="col-span-2 md:col-span-4 py-10 text-center text-[#888] text-[13px]">Aucun produit dans cette catégorie.</div>'; return; }
   // Register products in global map for safe cart access
-  prods.forEach(p => regProd(p, mName));
+  prods.forEach(p => regProd(p, mName, (DB?.merchants||[]).find(x=>x.id===p.merchantId)));
   grid.innerHTML = prods.map(p => {
     const out = p.stock <= 0;
     return `<div class="pcard">
@@ -1161,6 +1161,16 @@ function renderProdGrid(prods, mName) {
         <div class="flex justify-between items-center">
           <span class="font-black text-[14px]">${Number(p.price).toLocaleString()} <span class="text-[9px] font-normal text-[#888]">FCFA</span></span>
           <button data-pid="${p.id}" onclick="handleAddBtn(this)" ${out ? 'disabled' : ''} class="add-btn w-8 h-8 rounded-full flex items-center justify-center text-lg transition-colors ${out ? 'bg-[#f5f3ef] text-[#ccc] cursor-not-allowed' : 'bg-[#0a0a0a] text-white hover:bg-[#333]'}">+</button>
+        ${(m?.whatsapp || m?.phone) ? `<div class="flex gap-1.5 mt-2">
+          ${m?.whatsapp ? `<a href="https://wa.me/${m.whatsapp.replace(/[^0-9]/g,'')}?text=${encodeURIComponent('Bonjour, je suis intéressé par : '+p.name)}" target="_blank" rel="noopener" class="flex-1 flex items-center justify-center gap-1 bg-[#25D366] text-white rounded-lg py-1.5 text-[10px] font-semibold">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.131.558 4.133 1.535 5.874L.057 23.57a.75.75 0 0 0 .921.921l5.696-1.478A11.952 11.952 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.734 9.734 0 0 1-4.964-1.36l-.356-.212-3.686.956.977-3.566-.233-.368A9.748 9.748 0 0 1 2.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/></svg>
+            WhatsApp
+          </a>` : ''}
+          ${m?.phone ? `<a href="tel:${m.phone.replace(/[^0-9\+]/g,'')}" class="flex-1 flex items-center justify-center gap-1 bg-[#0a0a0a] text-white rounded-lg py-1.5 text-[10px] font-semibold">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Appeler
+          </a>` : ''}
+        </div>` : ''}
         </div>
       </div>
     </div>`;
@@ -1170,8 +1180,20 @@ function renderProdGrid(prods, mName) {
 // ═══════════════════════════════
 // CART
 // ═══════════════════════════════
-function openCart() { updateCartUI(); $('cartBg').classList.add('open'); $('cartPanel').classList.add('open'); document.body.classList.add('no-scroll'); }
-function closeCart() { $('cartBg').classList.remove('open'); $('cartPanel').classList.remove('open'); document.body.classList.remove('no-scroll'); }
+function openCart() {
+  updateCartUI();
+  const w=$('cartWrap'); if(w) w.style.display='block';
+  $('cartBg')?.classList.add('open');
+  $('cartPanel')?.classList.add('open');
+  document.body.classList.add('no-scroll');
+}
+function closeCart() {
+  $('cartBg')?.classList.remove('open');
+  $('cartPanel')?.classList.remove('open');
+  const w=$('cartWrap'); if(w) w.style.display='none';
+  document.body.classList.remove('no-scroll');
+}
+
 function addToCart(p) {
   if (CART.find(c => c.id === p.id)) { toast('Déjà dans le panier', 'info'); openCart(); return; }
   CART.push(p); saveCart(); updateCartUI();
