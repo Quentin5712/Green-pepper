@@ -13,7 +13,7 @@ const cors          = require('cors');
 const rateLimit     = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const cookieParser  = require('cookie-parser');
-const xssClean      = require('xss-clean');
+// xss-clean remplacé par xss (même protection)
 const XSS           = require('xss');
 const bcrypt        = require('bcryptjs');
 const jwt           = require('jsonwebtoken');
@@ -75,7 +75,7 @@ const uploadLimiter = rateLimit({ windowMs:60*60*1000, max:50,  message:{error:'
 app.use(express.json({ limit:'2mb' }));
 app.use(express.urlencoded({ extended:true, limit:'2mb' }));
 app.use(cookieParser());
-app.use(xssClean());
+// Sanitisation via xss sur chaque champ (voir fonction sanitize)
 app.use(mongoSanitize());
 
 // ══════════════════════════════════════════════
