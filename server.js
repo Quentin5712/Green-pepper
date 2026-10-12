@@ -29,6 +29,7 @@ const MerchantLink = require('./src/models/MerchantLink');
 const connectDB    = require('./src/config/db');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ══════════════════════════════════════════════
 // CONNEXION MONGODB ATLAS
