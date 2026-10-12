@@ -7,7 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Inter',sans-serif;background:#fafaf8;color:#0a0a0a;min-height:100%}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html,body{font-family:'Inter',sans-serif;background:#fafaf8;color:#0a0a0a;min-height:100%;min-height:100dvh}
+body{-webkit-overflow-scrolling:touch;overflow-x:hidden}
+@supports(padding:env(safe-area-inset-top)){
+  .header{padding-top:env(safe-area-inset-top)}
+  .cart-sidebar{padding-bottom:env(safe-area-inset-bottom)}
+  .modal-box{padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+}
 .serif{font-family:'Instrument Serif',serif}
 img{max-width:100%;display:block}
 input,select,textarea,button{font-family:'Inter',sans-serif}
@@ -22,7 +29,20 @@ input::placeholder,textarea::placeholder{color:#bbb}
 /* ── HEADER ── */
 .header{background:#0a0a0a;color:#fff;position:sticky;top:0;z-index:100}
 .header-inner{display:flex;align-items:center;justify-content:space-between;height:58px;gap:12px}
-@media(min-width:768px){.header-inner{height:64px}}
+@media(min-width:768px){
+  .header-inner{height:64px}
+  #heroText{order:1!important}
+  #heroImg{order:2!important;height:460px!important;font-size:120px!important}
+  .hero-grid{grid-template-columns:1fr 1fr!important}
+  .mkt-layout{flex-direction:row!important}
+  #mktSidebar{width:200px!important;flex-shrink:0!important;align-self:flex-start!important;position:sticky!important;top:80px!important}
+}
+@media(min-width:1024px){
+  .cat-grid{grid-template-columns:repeat(4,1fr)!important}
+  .prod-grid{grid-template-columns:repeat(4,1fr)!important}
+  .trend-grid{grid-template-columns:repeat(5,1fr)!important}
+  .vend-grid{grid-template-columns:repeat(4,1fr)!important}
+}
 .logo{font-family:'Instrument Serif',serif;font-size:18px;letter-spacing:.2em;color:#fff;background:none;border:none;cursor:pointer;padding:0}
 @media(min-width:768px){.logo{font-size:22px}}
 .header-nav{display:none}
@@ -241,7 +261,7 @@ tr:last-child td{border-bottom:none}
 
 <!-- HERO -->
 <div id="viewHero" style="padding:40px 0 60px">
-  <div style="display:grid;grid-template-columns:1fr;gap:40px;align-items:center">
+  <div class="hero-grid" style="display:grid;grid-template-columns:1fr;gap:40px;align-items:center">
     <div id="heroText" style="order:2">
       <p style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.15em;margin-bottom:16px">Marché · Douala</p>
       <h1 class="serif" style="font-size:clamp(40px,10vw,72px);line-height:.9;margin-bottom:24px">CURATED<br>FOR <em>THE</em><br>DISCERNING</h1>
@@ -276,7 +296,7 @@ tr:last-child td{border-bottom:none}
 <div id="viewMarket" class="hidden" style="padding:24px 0 80px">
   <div style="display:flex;flex-direction:column;gap:24px">
     <!-- Sidebar + Content -->
-    <div id="mktLayout" style="display:flex;flex-direction:column;gap:20px">
+    <div id="mktLayout" class="mkt-layout" style="display:flex;flex-direction:column;gap:20px">
       <div id="mktSidebar" class="box" style="padding:16px">
         <p style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Commerçants</p>
         <div id="filterMerchs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px"></div>
@@ -1238,21 +1258,33 @@ async function markAllRead(){await dbUp(d=>{(d.notifications||[]).filter(n=>n.me
 
 // ══════════ INIT ══════════
 // Afficher authBtn dès le départ
-window.addEventListener('DOMContentLoaded',()=>{
-  const ab=$('authBtn');if(ab)ab.style.display='';
-});
+
 
 async function init(){
-  if(!sessionStorage.getItem('gp_v')){sessionStorage.setItem('gp_v','1');dbUp(d=>{d.visitors=d.visitors||{total:0};d.visitors.total=(d.visitors.total||0)+1;return d;});}
-  const d=await dbRead();
-  if(!d||!d.categories){await dbWrite({categories:[],products:[],orders:[],users:[],merchants:[],merchantLinks:[],notifications:[],visitors:{total:0},deliveryFee:0});await dbRead();}
-  FEE=DB?.deliveryFee||0;updateCartUI();
+  // Afficher le bouton connexion dès le départ
+  const ab=$('authBtn');if(ab)ab.style.display='';
+  
+  if(!sessionStorage.getItem('gp_v')){
+    sessionStorage.setItem('gp_v','1');
+    dbUp(d=>{d.visitors=d.visitors||{total:0};d.visitors.total=(d.visitors.total||0)+1;return d;});
+  }
+  
+  // Charger la DB en arrière-plan (ne pas bloquer l'affichage)
+  dbRead().then(d=>{
+    if(!d||!d.categories){
+      dbWrite({categories:[],products:[],orders:[],users:[],merchants:[],merchantLinks:[],notifications:[],visitors:{total:0},deliveryFee:0}).then(()=>dbRead());
+    }
+    FEE=DB?.deliveryFee||0;
+    updateCartUI();
+  });
+  
   // Token dans URL
   const p=new URLSearchParams(window.location.search),token=p.get('register');
   if(token){$('mToken').value=token;swTab('merch');openAuth();}
+  
   showView('hero');
 }
-init();
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
