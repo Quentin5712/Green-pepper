@@ -1,7 +1,6 @@
 {
   "name": "green-pepper-market",
   "version": "1.0.0",
-  "license": "MIT",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -20,7 +19,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.6.0",
     "multer": "^2.0.0",
-    "uuid": "^11.0.0",
+    "uuid": "^10.0.0",
     "xss": "^1.0.15"
   }
 }
