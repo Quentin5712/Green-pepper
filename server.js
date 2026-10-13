@@ -29,7 +29,6 @@ const MerchantLink = require('./src/models/MerchantLink');
 const connectDB    = require('./src/config/db');
 
 const app = express();
-app.set('trust proxy', 1);
 
 // ══════════════════════════════════════════════
 // CONNEXION MONGODB ATLAS
@@ -67,6 +66,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type','Authorization'],
   credentials: true, maxAge: 86400,
 }));
+
+// ── FIX RENDER PROXY ── (obligatoire sinon crash ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
+app.set('trust proxy', 1);
 
 app.use(rateLimit({ windowMs:15*60*1000, max:300, standardHeaders:true, legacyHeaders:false, message:{error:'Trop de requêtes'} }));
 const payLimiter    = rateLimit({ windowMs:15*60*1000, max:10,  message:{error:'Trop de tentatives paiement'} });
