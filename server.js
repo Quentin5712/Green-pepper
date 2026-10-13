@@ -86,6 +86,14 @@ app.use(mongoSanitize());
 // ══════════════════════════════════════════════
 const UPLOADS_DIR = path.join(__dirname,'public','uploads');
 const INDEX       = path.join(__dirname,'public','index.html');
+// DEBUG — log les 150 premiers caractères du fichier servi
+try {
+  const preview = require('fs').readFileSync(INDEX,'utf8').slice(0,150).replace(/
+/g,' ');
+  console.log('>>> SERVING FILE:', INDEX);
+  console.log('>>> PREVIEW:', preview);
+  console.log('>>> FILE SIZE:', require('fs').statSync(INDEX).size, 'bytes');
+} catch(e) { console.log('>>> INDEX NOT FOUND:', INDEX); }
 fs.mkdirSync(path.join(UPLOADS_DIR,'admin'), { recursive:true });
 
 let upload = null;
