@@ -7,7 +7,6 @@ const express       = require('express');
 const mongoose      = require('mongoose');
 const axios         = require('axios');
 const path          = require('path');
-const fs = require('fs');
 const fs            = require('fs');
 const helmet        = require('helmet');
 const cors          = require('cors');
