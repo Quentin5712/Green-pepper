@@ -126,23 +126,13 @@ function validate(req, res, next) {
 }
 
 // ══════════════════════════════════════════════
+// 5. // ══════════════════════════════════════════════
 // 5. MULTER — upload photos
-// ═══// ══════════════════════════════════════════════
-// MULTER — upload photos
 // ══════════════════════════════════════════════
 let upload = null;
 try {
   const multer  = require('multer');
-  const path = require('path');
-  const fs = require('fs');
-
-  // Sur Render, utilise /tmp qui est inscriptible
-  const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads');
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-  // Servir les images statiquement — INDISPENSABLE
-  app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d' }));
-
+  // ne pas redéclarer path, fs, UPLOADS_DIR - on utilise ceux du haut
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       const mid = safeMID(req.params.merchantId || 'admin');
@@ -157,7 +147,6 @@ try {
       cb(null, `img_${Date.now()}_${uuidv4().slice(0,8)}${ext}`);
     },
   });
-
   upload = multer({
     storage,
     limits: { fileSize: 5*1024*1024, files: 1 },
@@ -166,8 +155,7 @@ try {
         ? cb(null, true) : cb(new Error('Images uniquement'));
     },
   });
-} catch(e) { console.warn('multer non dispo:', e.message); }// ══════════════════════════════════════════════
-// 6// ══════════════════════════════════════════════
+} catch(e) { console.warn('multer non dispo:', e.message); }// 6// ══════════════════════════════════════════════
 // DB - MONGODB ATELIER 
 // ══════════════════════════════════════════════
 let CB_FAILS = 0, CB_OPEN_UNTIL = 0;
