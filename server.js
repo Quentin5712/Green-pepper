@@ -431,22 +431,27 @@ process.on('uncaughtException',  e => console.error(`💥 UncaughtException: ${e
 process.on('SIGTERM', () => { console.log('📴 Arrêt propre'); process.exit(0); });
 process.on('SIGINT',  () => { console.log('📴 Arrêt propre'); process.exit(0); });
 
-// ══════════════════════════════════════════════
+// // ══════════════════════════════════════════════
 // DÉMARRAGE
 // ══════════════════════════════════════════════
-// Connexion MongoDB si MONGO_URI défini
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+
 let connectDB = null;
 try {
-  if (process.env.MONGO_URI) {
+  if (MONGO_URI) {
     connectDB = require('./src/config/db');
     connectDB().then(() => console.log('✅ MongoDB Atlas connecté'))
               .catch(e => console.warn('⚠️  MongoDB:', e.message));
+  } else {
+    console.warn('⚠️  MONGO_URI / MONGODB_URI manquant');
   }
-} catch(e) { console.warn('⚠️  MongoDB module absent:', e.message); }
+} catch(e) { 
+  console.warn('⚠️  MongoDB module absent:', e.message); 
+}
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🌶️  Green Pepper Market — port ${PORT}`);
-  console.log(`   JSONBin   : ${BIN_KEY  ? '✅' : '❌ API_KEY manquant'}`);
+  console.log(`   MongoDB   : ${MONGO_URI ? '✅ Atlas' : '❌ URI manquant'}`);
   console.log(`   MTN MoMo  : ${MOMO_SUB ? '✅' : '❌ MOMO_SUBSCRIPTION_KEY manquant'}`);
   console.log(`   Orange    : ${OM_ID    ? '✅' : '⚠️  OM_CLIENT_ID manquant'}`);
   console.log(`   Index     : ${fs.existsSync(INDEX) ? '✅' : '❌ INTROUVABLE: '+INDEX}`);
