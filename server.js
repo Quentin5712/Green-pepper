@@ -156,45 +156,59 @@ try {
 } catch(e) { console.warn('multer non dispo:', e.message); }
 
 // ══════════════════════════════════════════════
-// 6. CIRCUIT BREAKER — JSONBin
-// Évite de bloquer si JSONBin est en panne
+// 6// ══════════════════════════════════════════════
+// DB - MONGODB ATELIER 
 // ══════════════════════════════════════════════
 let CB_FAILS = 0, CB_OPEN_UNTIL = 0;
 const CB_MAX = 5, CB_TIMEOUT = 60000;
 
+// On utilisera les models Mongoose depuis src/models
+let Product, Merchant, Order;
+
+function getModels() {
+  if (!Product) {
+    try {
+      Product = require('./src/models/Product');
+      Merchant = require('./src/models/Merchant');
+      Order = require('./src/models/Order');
+    } catch(e) {
+      console.warn('⚠️ Models non trouvés:', e.message);
+    }
+  }
+  return { Product, Merchant, Order };
+}
+
 async function dbRead() {
-  if (!BIN_ID || !BIN_KEY) throw new Error('BIN_ID ou API_KEY manquant');
   if (CB_FAILS >= CB_MAX && Date.now() < CB_OPEN_UNTIL)
-    throw new Error('Circuit breaker ouvert — JSONBin temporairement inaccessible');
+    throw new Error('Circuit breaker ouvert — MongoDB temporairement inaccessible');
   try {
-    const r = await axios.get(
-      `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
-      { headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }, timeout: 10000 }
-    );
+    const { Product, Merchant } = getModels();
+    if (!Product) throw new Error('Models MongoDB non chargés');
+    const products = await Product.find().lean();
+    const merchants = await Merchant.find().lean();
     CB_FAILS = 0;
-    return r.data;
+    return { products, merchants, record: { products, merchants } };
   } catch(e) {
     if (++CB_FAILS >= CB_MAX) {
       CB_OPEN_UNTIL = Date.now() + CB_TIMEOUT;
-      console.error(`⚡ Circuit breaker ouvert (${CB_FAILS} échecs JSONBin)`);
+      console.error(`⚡ Circuit breaker ouvert (${CB_FAILS} échecs MongoDB)`);
     }
     throw e;
   }
 }
+
 async function dbWrite(data) {
-  if (!BIN_ID || !BIN_KEY) throw new Error('BIN_ID ou API_KEY manquant');
-  await axios.put(
-    `https://api.jsonbin.io/v3/b/${BIN_ID}`,
-    data,
-    { headers: { 'Content-Type': 'application/json', 'X-Master-Key': BIN_KEY }, timeout: 10000 }
-  );
+  // En MongoDB on n'écrit pas tout le JSON, on écrit via les models
+  // Cette fonction est gardée pour compatibilité mais ne fait rien
+  // Les vraies écritures se font via Product.create / Merchant.create
+  return true;
 }
+
 async function dbUp(fn) {
   const d = await dbRead();
   const nd = fn(d);
-  if (nd) await dbWrite(nd);
   return nd;
-}
+  }
 
 // ══════════════════════════════════════════════
 // UTILS
