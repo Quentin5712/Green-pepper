@@ -24,11 +24,8 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ══════════════════════════════════════════════
-// CONFIG
-// ══════════════════════════════════════════════
+//// CONFIG
 const PORT        = process.env.PORT                  || 3000;
-const BIN_ID      = process.env.BIN_ID;
-const BIN_KEY     = process.env.API_KEY;
 const CALLBACK    = (process.env.CALLBACK_URL || '').replace(/\/$/, '');
 const MOMO_ENV    = process.env.MOMO_ENV              || 'mtncameroon';
 const MOMO_BASE   = MOMO_ENV === 'sandbox'
@@ -44,8 +41,8 @@ const JWT_SECRET  = process.env.JWT_SECRET            || uuidv4();
 const ALLOWED     = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 const INDEX       = path.join(__dirname, 'public', 'index.html');
+const MONGO_URI   = process.env.MONGO_URI || process.env.MONGODB_URI;
 
-// Créer dossiers au démarrage
 [UPLOADS_DIR, path.join(UPLOADS_DIR, 'admin')].forEach(d => {
   try { fs.mkdirSync(d, { recursive: true }); } catch(e) {}
 });
