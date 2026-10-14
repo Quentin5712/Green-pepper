@@ -432,10 +432,9 @@ process.on('SIGTERM', () => { console.log('📴 Arrêt propre'); process.exit(0)
 process.on('SIGINT',  () => { console.log('📴 Arrêt propre'); process.exit(0); });
 
 // // ══════════════════════════════════════════════
+// // ══════════════════════════════════════════════
 // DÉMARRAGE
 // ══════════════════════════════════════════════
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-
 let connectDB = null;
 try {
   if (MONGO_URI) {
