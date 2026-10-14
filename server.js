@@ -24,8 +24,11 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ══════════════════════════════════════════════
-//// CONFIG
+// CONFIG
+// ══════════════════════════════════════════════
 const PORT        = process.env.PORT                  || 3000;
+const BIN_ID      = process.env.BIN_ID;
+const BIN_KEY     = process.env.API_KEY;
 const CALLBACK    = (process.env.CALLBACK_URL || '').replace(/\/$/, '');
 const MOMO_ENV    = process.env.MOMO_ENV              || 'mtncameroon';
 const MOMO_BASE   = MOMO_ENV === 'sandbox'
@@ -41,8 +44,8 @@ const JWT_SECRET  = process.env.JWT_SECRET            || uuidv4();
 const ALLOWED     = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 const INDEX       = path.join(__dirname, 'public', 'index.html');
-const MONGO_URI   = process.env.MONGO_URI || process.env.MONGODB_URI;
 
+// Créer dossiers au démarrage
 [UPLOADS_DIR, path.join(UPLOADS_DIR, 'admin')].forEach(d => {
   try { fs.mkdirSync(d, { recursive: true }); } catch(e) {}
 });
@@ -126,13 +129,11 @@ function validate(req, res, next) {
 }
 
 // ══════════════════════════════════════════════
-// 5. // ══════════════════════════════════════════════
 // 5. MULTER — upload photos
 // ══════════════════════════════════════════════
 let upload = null;
 try {
   const multer  = require('multer');
-  // ne pas redéclarer path, fs, UPLOADS_DIR - on utilise ceux du haut
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       const mid = safeMID(req.params.merchantId || 'admin');
@@ -155,59 +156,48 @@ try {
         ? cb(null, true) : cb(new Error('Images uniquement'));
     },
   });
-} catch(e) { console.warn('multer non dispo:', e.message); }// 6// ══════════════════════════════════════════════
-// DB - MONGODB ATELIER 
+} catch(e) { console.warn('multer non dispo:', e.message); }
+
+// ══════════════════════════════════════════════
+// 6. CIRCUIT BREAKER — JSONBin
+// Évite de bloquer si JSONBin est en panne
 // ══════════════════════════════════════════════
 let CB_FAILS = 0, CB_OPEN_UNTIL = 0;
 const CB_MAX = 5, CB_TIMEOUT = 60000;
 
-// On utilisera les models Mongoose depuis src/models
-let Product, Merchant, Order;
-
-function getModels() {
-  if (!Product) {
-    try {
-      Product = require('./src/models/Product');
-      Merchant = require('./src/models/Merchant');
-      Order = require('./src/models/Order');
-    } catch(e) {
-      console.warn('⚠️ Models non trouvés:', e.message);
-    }
-  }
-  return { Product, Merchant, Order };
-}
-
 async function dbRead() {
+  if (!BIN_ID || !BIN_KEY) throw new Error('BIN_ID ou API_KEY manquant');
   if (CB_FAILS >= CB_MAX && Date.now() < CB_OPEN_UNTIL)
-    throw new Error('Circuit breaker ouvert — MongoDB temporairement inaccessible');
+    throw new Error('Circuit breaker ouvert — JSONBin temporairement inaccessible');
   try {
-    const { Product, Merchant } = getModels();
-    if (!Product) throw new Error('Models MongoDB non chargés');
-    const products = await Product.find().lean();
-    const merchants = await Merchant.find().lean();
+    const r = await axios.get(
+      `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+      { headers: { 'X-Master-Key': BIN_KEY, 'X-Bin-Meta': 'false' }, timeout: 10000 }
+    );
     CB_FAILS = 0;
-    return { products, merchants, record: { products, merchants } };
+    return r.data;
   } catch(e) {
     if (++CB_FAILS >= CB_MAX) {
       CB_OPEN_UNTIL = Date.now() + CB_TIMEOUT;
-      console.error(`⚡ Circuit breaker ouvert (${CB_FAILS} échecs MongoDB)`);
+      console.error(`⚡ Circuit breaker ouvert (${CB_FAILS} échecs JSONBin)`);
     }
     throw e;
   }
 }
-
 async function dbWrite(data) {
-  // En MongoDB on n'écrit pas tout le JSON, on écrit via les models
-  // Cette fonction est gardée pour compatibilité mais ne fait rien
-  // Les vraies écritures se font via Product.create / Merchant.create
-  return true;
+  if (!BIN_ID || !BIN_KEY) throw new Error('BIN_ID ou API_KEY manquant');
+  await axios.put(
+    `https://api.jsonbin.io/v3/b/${BIN_ID}`,
+    data,
+    { headers: { 'Content-Type': 'application/json', 'X-Master-Key': BIN_KEY }, timeout: 10000 }
+  );
 }
-
 async function dbUp(fn) {
   const d = await dbRead();
   const nd = fn(d);
+  if (nd) await dbWrite(nd);
   return nd;
-  }
+}
 
 // ══════════════════════════════════════════════
 // UTILS
@@ -238,6 +228,22 @@ async function getOrangeToken() {
 // ══════════════════════════════════════════════
 // HEALTH CHECK — Render le ping pour garder le service actif
 // ══════════════════════════════════════════════
+// ── SEED DATA (à supprimer après test) ──
+app.get('/seed-juices', async (req, res) => {
+  try {
+    let Product;
+    try { Product = require('./src/models/Product'); } catch(e) { return res.send('MongoDB non connecté'); }
+    const count = await Product.countDocuments();
+    if (count > 0) return res.send(`Déjà ${count} produits - <a href='/api/products'>voir /api/products</a>`);
+    await Product.insertMany([
+      { name:"Jus Bissap",   price:1500, category:"jus", stock:100, sellerId:"admin", description:"Jus naturel" },
+      { name:"Jus Baobab",   price:1500, category:"jus", stock:100, sellerId:"admin", description:"Jus naturel" },
+      { name:"Jus Gingembre",price:1200, category:"jus", stock:100, sellerId:"admin", description:"Jus naturel" }
+    ]);
+    res.send("✅ 3 jus ajoutés ! <a href='/api/products'>voir /api/products</a>");
+  } catch(e) { res.status(500).send("Erreur: " + e.message); }
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -405,31 +411,6 @@ app.use(express.static(path.join(__dirname,'public'),{
   }
 }));
 
-// ==== COLLE ICI ====
-app.get('/api/products', async (req, res) => {
-  try {
-    const { Product } = getModels();
-    if (!Product) return res.json([]);
-    const products = await Product.find().lean();
-    res.json(products);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/seed-juices', async (req, res) => {
-  try {
-    const { Product } = getModels();
-    const count = await Product.countDocuments();
-    if (count > 0) return res.send(`Déjà ${count} produits`);
-    await Product.insertMany([
-      { name: "Jus Bissap", price: 1500, category: "jus", stock: 100, merchantId: "admin" },
-      { name: "Jus Baobab", price: 1500, category: "jus", stock: 100, merchantId: "admin" },
-      { name: "Jus Gingembre", price: 1200, category: "jus", stock: 100, merchantId: "admin" }
-    ]);
-    res.send("✅ 3 jus ajoutés !");
-  } catch(e) { res.status(500).send(e.message); }
-});
-// ==== FIN DU COLLAGE ====
-
 app.use('/api/*',(req,res)=>res.status(404).json({error:'Route API non trouvée'}));
 
 app.get('*',(req,res)=>{
@@ -455,26 +436,22 @@ process.on('uncaughtException',  e => console.error(`💥 UncaughtException: ${e
 process.on('SIGTERM', () => { console.log('📴 Arrêt propre'); process.exit(0); });
 process.on('SIGINT',  () => { console.log('📴 Arrêt propre'); process.exit(0); });
 
-// // ══════════════════════════════════════════════
-// // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
 // DÉMARRAGE
 // ══════════════════════════════════════════════
+// Connexion MongoDB si MONGO_URI défini
 let connectDB = null;
 try {
-  if (MONGO_URI) {
+  if (process.env.MONGO_URI) {
     connectDB = require('./src/config/db');
     connectDB().then(() => console.log('✅ MongoDB Atlas connecté'))
               .catch(e => console.warn('⚠️  MongoDB:', e.message));
-  } else {
-    console.warn('⚠️  MONGO_URI / MONGODB_URI manquant');
   }
-} catch(e) { 
-  console.warn('⚠️  MongoDB module absent:', e.message); 
-}
+} catch(e) { console.warn('⚠️  MongoDB module absent:', e.message); }
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🌶️  Green Pepper Market — port ${PORT}`);
-  console.log(`   MongoDB   : ${MONGO_URI ? '✅ Atlas' : '❌ URI manquant'}`);
+  console.log(`   JSONBin   : ${BIN_KEY  ? '✅' : '❌ API_KEY manquant'}`);
   console.log(`   MTN MoMo  : ${MOMO_SUB ? '✅' : '❌ MOMO_SUBSCRIPTION_KEY manquant'}`);
   console.log(`   Orange    : ${OM_ID    ? '✅' : '⚠️  OM_CLIENT_ID manquant'}`);
   console.log(`   Index     : ${fs.existsSync(INDEX) ? '✅' : '❌ INTROUVABLE: '+INDEX}`);
