@@ -405,6 +405,31 @@ app.use(express.static(path.join(__dirname,'public'),{
   }
 }));
 
+// ==== COLLE ICI ====
+app.get('/api/products', async (req, res) => {
+  try {
+    const { Product } = getModels();
+    if (!Product) return res.json([]);
+    const products = await Product.find().lean();
+    res.json(products);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/seed-juices', async (req, res) => {
+  try {
+    const { Product } = getModels();
+    const count = await Product.countDocuments();
+    if (count > 0) return res.send(`Déjà ${count} produits`);
+    await Product.insertMany([
+      { name: "Jus Bissap", price: 1500, category: "jus", stock: 100, merchantId: "admin" },
+      { name: "Jus Baobab", price: 1500, category: "jus", stock: 100, merchantId: "admin" },
+      { name: "Jus Gingembre", price: 1200, category: "jus", stock: 100, merchantId: "admin" }
+    ]);
+    res.send("✅ 3 jus ajoutés !");
+  } catch(e) { res.status(500).send(e.message); }
+});
+// ==== FIN DU COLLAGE ====
+
 app.use('/api/*',(req,res)=>res.status(404).json({error:'Route API non trouvée'}));
 
 app.get('*',(req,res)=>{
