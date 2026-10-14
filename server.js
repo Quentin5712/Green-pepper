@@ -423,6 +423,16 @@ process.on('SIGINT',  () => { console.log('📴 Arrêt propre'); process.exit(0)
 // ══════════════════════════════════════════════
 // DÉMARRAGE
 // ══════════════════════════════════════════════
+// Connexion MongoDB si MONGO_URI défini
+let connectDB = null;
+try {
+  if (process.env.MONGO_URI) {
+    connectDB = require('./src/config/db');
+    connectDB().then(() => console.log('✅ MongoDB Atlas connecté'))
+              .catch(e => console.warn('⚠️  MongoDB:', e.message));
+  }
+} catch(e) { console.warn('⚠️  MongoDB module absent:', e.message); }
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🌶️  Green Pepper Market — port ${PORT}`);
   console.log(`   JSONBin   : ${BIN_KEY  ? '✅' : '❌ API_KEY manquant'}`);
