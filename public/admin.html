@@ -1,1 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Green Pepper Market</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="/css/style.css" rel="stylesheet">
+</head>
+<body style="background:#f3f4f6;min-height:100vh">
 
+<header class="adm-header">
+  <h1>🌶️ Green Pepper — Administration</h1>
+  <nav class="adm-nav">
+    <a href="/">← Site</a>
+    <a href="#" onclick="loadTab('orders')">Commandes</a>
+    <a href="#" onclick="loadTab('products')">Produits</a>
+  </nav>
+</header>
+
+<main class="adm-main">
+
+  <!-- Stats -->
+  <div class="adm-stats" id="statsGrid">
+    <div class="adm-stat"><div class="adm-stat-val" id="stProducts">—</div><div class="adm-stat-lbl">Produits</div></div>
+    <div class="adm-stat"><div class="adm-stat-val" id="stTotal">—</div><div class="adm-stat-lbl">Commandes</div></div>
+    <div class="adm-stat"><div class="adm-stat-val" id="stPending" style="color:#f59e0b">—</div><div class="adm-stat-lbl">En attente</div></div>
+    <div class="adm-stat"><div class="adm-stat-val" id="stValide" style="color:#16a34a">—</div><div class="adm-stat-lbl">Validées</div></div>
+    <div class="adm-stat"><div class="adm-stat-val" id="stRefuse" style="color:#ef4444">—</div><div class="adm-stat-lbl">Refusées</div></div>
+    <div class="adm-stat"><div class="adm-stat-val" id="stRevenue" style="color:#f97316">—</div><div class="adm-stat-lbl">FCFA</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="adm-tabs">
+    <button id="tab-orders"   class="adm-tab active" onclick="loadTab('orders')">📦 Commandes</button>
+    <button id="tab-products" class="adm-tab"        onclick="loadTab('products')">🛍️ Produits</button>
+  </div>
+
+  <!-- COMMANDES -->
+  <div id="panel-orders">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button onclick="filterOrders('')"        class="adm-filter-btn active" data-s="">Toutes</button>
+      <button onclick="filterOrders('PENDING')" class="adm-filter-btn" data-s="PENDING">⏳ En attente</button>
+      <button onclick="filterOrders('VALIDÉ')"  class="adm-filter-btn" data-s="VALIDÉ">✅ Validées</button>
+      <button onclick="filterOrders('REFUSÉ')"  class="adm-filter-btn" data-s="REFUSÉ">❌ Refusées</button>
+    </div>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr>
+          <th>Référence</th><th>Client</th><th>Téléphone</th><th>Produits</th>
+          <th>Total</th><th>Opérateur</th><th>Statut</th><th>Date</th>
+        </tr></thead>
+        <tbody id="ordersBody"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PRODUITS -->
+  <div id="panel-products" style="display:none">
+    <!-- Formulaire ajout -->
+    <div class="adm-form">
+      <h3 id="formTitle">➕ Nouveau produit</h3>
+      <input type="hidden" id="editId">
+      <div class="adm-form-grid">
+        <div class="adm-field"><label>Nom *</label><input id="fName" class="adm-input" placeholder="Ex: Jus de Bissap"></div>
+        <div class="adm-field"><label>Prix (FCFA) *</label><input id="fPrice" type="number" class="adm-input" placeholder="1500"></div>
+        <div class="adm-field"><label>Stock *</label><input id="fStock" type="number" class="adm-input" placeholder="100"></div>
+        <div class="adm-field"><label>Catégorie</label><input id="fCategory" class="adm-input" placeholder="Boissons"></div>
+        <div class="adm-field"><label>Unité</label><input id="fUnit" class="adm-input" placeholder="bouteille 50cl"></div>
+        <div class="adm-field"><label>URL Image</label><input id="fImage" class="adm-input" placeholder="https://…"></div>
+        <div class="adm-field" style="grid-column:1/-1"><label>Description</label><input id="fDesc" class="adm-input" placeholder="Description courte"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button onclick="submitProduct()" class="adm-submit">💾 Enregistrer</button>
+        <button onclick="resetForm()" style="padding:10px 20px;border-radius:8px;border:1px solid #e5e7eb;font-size:14px;background:#fff">Annuler</button>
+        <button onclick="seedProducts()" style="padding:10px 20px;border-radius:8px;border:1px solid #e5e7eb;font-size:14px;background:#fff;margin-left:auto">🌱 Seed 6 produits</button>
+      </div>
+    </div>
+
+    <!-- Table produits -->
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr>
+          <th>Image</th><th>Nom</th><th>Catégorie</th><th>Prix</th>
+          <th>Stock</th><th>Unité</th><th>Actif</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="productsBody"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div id="toastWrap" class="gp-toast-wrap"></div>
+
+<style>
+.adm-filter-btn{padding:7px 16px;border-radius:100px;font-size:12px;font-weight:600;border:1.5px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer}
+.adm-filter-btn.active{background:#f97316;color:#fff;border-color:#f97316}
+</style>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>
