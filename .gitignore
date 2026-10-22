@@ -1,9 +1,26 @@
-node_modules/
+# Secrets — ne JAMAIS commiter
 .env
 .env.local
 .env.production
+.env.*.local
+
+# Dépendances
+node_modules/
+
+# Logs
 logs/
 *.log
+npm-debug.log*
+
+# Uploads (stocker sur CDN en prod)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Factures générées
+invoices/
+
+# IDE
 .DS_Store
 Thumbs.db
-public/uploads/
+.vscode/
+.idea/
