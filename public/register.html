@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Inscription — Green Pepper Market</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="/css/style.css" rel="stylesheet">
+  <style>
+    .auth-card{background:#fff;border-radius:20px;padding:40px;box-shadow:0 8px 40px rgba(0,0,0,.1);width:100%;max-width:480px}
+    .auth-input{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;color:#111;font-family:'Inter',sans-serif;outline:none}
+    .auth-input:focus{border-color:#f97316}
+    .auth-btn{width:100%;padding:13px;background:#f97316;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+    .auth-btn:hover{background:#ea6c00}
+    .auth-btn:disabled{opacity:.5;cursor:not-allowed}
+    .auth-error{color:#dc2626;font-size:13px;text-align:center;margin-top:10px;display:none}
+    .field{margin-bottom:16px}
+    .field label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px}
+    .hint{font-size:11px;color:#9ca3af;margin-top:4px}
+  </style>
+</head>
+<body style="background:#f3f4f6;min-height:100vh;display:flex;flex-direction:column">
+  <header style="background:#111827;padding:16px 24px">
+    <a href="/" style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;text-decoration:none">🌶️ Green Pepper</a>
+  </header>
+  <main style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px">
+    <div class="auth-card">
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;margin-bottom:6px;color:#111">Créer un compte</h1>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:28px">Rejoignez le marché camerounais Green Pepper</p>
+
+      <div class="field">
+        <label>Nom complet</label>
+        <input id="name" type="text" required autocomplete="name" class="auth-input" placeholder="Marie Nguemdjou">
+      </div>
+      <div class="field">
+        <label>Adresse e-mail</label>
+        <input id="email" type="email" required autocomplete="email" class="auth-input" placeholder="votre@email.com">
+      </div>
+      <div class="field">
+        <label>Téléphone (Mobile Money)</label>
+        <input id="phone" type="tel" autocomplete="tel" class="auth-input" placeholder="655 123 456">
+        <p class="hint">Format : 6XX XXX XXX (Cameroun)</p>
+      </div>
+      <div class="field" style="margin-bottom:24px">
+        <label>Mot de passe</label>
+        <input id="password" type="password" required autocomplete="new-password" class="auth-input" placeholder="Commence par une majuscule, 6 caractères min">
+        <p class="hint">Doit commencer par une lettre majuscule</p>
+      </div>
+
+      <button id="registerBtn" onclick="doRegister()" class="auth-btn">Créer mon compte</button>
+      <p id="regError" class="auth-error"></p>
+
+      <div style="text-align:center;margin-top:20px">
+        <p style="font-size:13px;color:#6b7280">Déjà un compte ? <a href="/login.html" style="color:#f97316;font-weight:600">Se connecter</a></p>
+      </div>
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #f3f4f6;text-align:center">
+        <p style="font-size:12px;color:#9ca3af">En créant un compte, vous acceptez nos <a href="/cgu.html" style="color:#f97316">CGU</a> et notre <a href="/privacy.html" style="color:#f97316">Politique de confidentialité</a></p>
+      </div>
+    </div>
+  </main>
+  <script>
+    async function doRegister() {
+      const name     = document.getElementById('name').value.trim();
+      const email    = document.getElementById('email').value.trim();
+      const phone    = document.getElementById('phone').value.trim();
+      const password = document.getElementById('password').value;
+      const btn      = document.getElementById('registerBtn');
+      const err      = document.getElementById('regError');
+      err.style.display = 'none';
+
+      if (!name)     { err.textContent = 'Le nom est requis';              err.style.display='block'; return; }
+      if (!email)    { err.textContent = 'L\'email est requis';            err.style.display='block'; return; }
+      if (!password) { err.textContent = 'Le mot de passe est requis';     err.style.display='block'; return; }
+      if (!/^[A-Z]/.test(password)) { err.textContent = 'Le mot de passe doit commencer par une majuscule'; err.style.display='block'; return; }
+      if (password.length < 6)      { err.textContent = 'Mot de passe trop court (6 caractères minimum)';  err.style.display='block'; return; }
+
+      btn.disabled = true; btn.textContent = 'Création…';
+
+      try {
+        const r = await fetch('/api/auth/register', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, email, phone, password }),
+        });
+        const data = await r.json();
+
+        if (!r.ok) { err.textContent = data.error || 'Erreur lors de la création'; err.style.display='block'; btn.disabled=false; btn.textContent='Créer mon compte'; return; }
+
+        localStorage.setItem('gp_token', data.token);
+        localStorage.setItem('gp_user',  JSON.stringify(data.user));
+        window.location.href = '/';
+
+      } catch(e) { err.textContent = 'Erreur réseau. Réessayez.'; err.style.display='block'; btn.disabled=false; btn.textContent='Créer mon compte'; }
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+  </script>
+</body>
+</html>

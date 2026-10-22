@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ma Boutique — Green Pepper Market</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="/css/style.css" rel="stylesheet">
+  <style>
+    body{background:#f3f4f6;font-family:'Inter',sans-serif}
+    #impersonateBanner{background:#dc2626;color:#fff;text-align:center;padding:10px 20px;font-size:14px;font-weight:600;display:none}
+    .merch-header{background:#111827;color:#fff;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .merch-main{max-width:1200px;margin:0 auto;padding:24px 16px}
+    .stat-card{background:#fff;border-radius:14px;padding:20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .stat-val{font-size:26px;font-weight:900;color:#f97316}
+    .stat-lbl{font-size:11px;color:#6b7280;margin-top:4px}
+    .tab-btn{padding:10px 20px;font-size:13px;font-weight:600;color:#6b7280;border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px}
+    .tab-btn.active{color:#f97316;border-color:#f97316}
+    .tbl-wrap{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{background:#f9fafb;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+    td{padding:12px 14px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    .pill{display:inline-block;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+    .pill-ok{background:#dcfce7;color:#166534}
+    .pill-warn{background:#fef9c3;color:#854d0e}
+    .pill-err{background:#fee2e2;color:#991b1b}
+    .form-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+    .f-group{display:flex;flex-direction:column;gap:5px}
+    .f-group label{font-size:11px;font-weight:600;color:#374151}
+    .f-inp{padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;outline:none}
+    .f-inp:focus{border-color:#f97316}
+    .f-btn{padding:10px 20px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+    .f-btn:hover{background:#ea6c00}
+    .action-btn{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none}
+    .btn-edit{background:#f0fdf4;color:#16a34a;border:1px solid #86efac}
+    .btn-del{background:#fff1f2;color:#dc2626;border:1px solid #fca5a5}
+    .notif-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;margin-left:6px}
+    .notif-item{padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;gap:12px;align-items:flex-start}
+    .notif-item.unread{background:#fffbeb}
+  </style>
+</head>
+<body>
+
+<div id="impersonateBanner">
+  Connecté en tant que <span id="impersonateName"></span> (par admin)
+  <button onclick="exitImpersonate()" style="background:rgba(255,255,255,.2);border:1px solid #fff;color:#fff;padding:3px 12px;border-radius:6px;cursor:pointer;margin-left:12px;font-size:13px">← Retour Admin</button>
+</div>
+
+<header class="merch-header">
+  <span style="font-family:'Playfair Display',serif;font-size:18px">🌶️ Ma Boutique</span>
+  <div style="display:flex;align-items:center;gap:16px">
+    <button onclick="switchTab('notifications')" style="position:relative;background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;font-size:13px">
+      🔔 Notifs <span id="notifCount" class="notif-dot" style="display:none"></span>
+    </button>
+    <a href="/" style="color:rgba(255,255,255,.7);font-size:13px;text-decoration:none">← Site</a>
+    <button onclick="doLogout()" style="color:#f97316;background:none;border:none;cursor:pointer;font-size:13px">Déconnexion</button>
+  </div>
+</header>
+
+<main class="merch-main">
+
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px">
+    <div class="stat-card"><div class="stat-val" id="mstToday">—</div><div class="stat-lbl">CA Aujourd'hui</div></div>
+    <div class="stat-card"><div class="stat-val" id="mstMonth">—</div><div class="stat-lbl">CA ce mois</div></div>
+    <div class="stat-card"><div class="stat-val" id="mstPending" style="color:#f59e0b">—</div><div class="stat-lbl">En attente</div></div>
+    <div class="stat-card"><div class="stat-val" id="mstLowStock" style="color:#ef4444">—</div><div class="stat-lbl">Stock faible</div></div>
+    <div class="stat-card"><div class="stat-val" id="mstOnline" style="color:#22c55e">—</div><div class="stat-lbl">Clients en ligne</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:4px;border-bottom:2px solid #e5e7eb;margin-bottom:20px;overflow-x:auto">
+    <button id="tab-products" onclick="switchTab('products')" class="tab-btn active">Produits</button>
+    <button id="tab-orders"   onclick="switchTab('orders')"   class="tab-btn">Commandes</button>
+    <button id="tab-stock"    onclick="switchTab('stock')"    class="tab-btn">Stocks</button>
+    <button id="tab-notifications" onclick="switchTab('notifications')" class="tab-btn">Notifications</button>
+  </div>
+
+  <!-- PRODUITS -->
+  <div id="panel-products">
+    <div class="form-card">
+      <p style="font-size:14px;font-weight:700;margin-bottom:14px" id="formTitle">➕ Nouveau produit</p>
+      <div class="form-grid">
+        <div class="f-group"><label>Nom *</label><input id="pName" class="f-inp" placeholder="Ex: Jus de Gingembre"></div>
+        <div class="f-group"><label>Prix (FCFA) *</label><input id="pPrice" type="number" class="f-inp" placeholder="1500"></div>
+        <div class="f-group"><label>Stock *</label><input id="pStock" type="number" class="f-inp" placeholder="50"></div>
+        <div class="f-group"><label>Catégorie</label><input id="pCat" class="f-inp" placeholder="Boissons"></div>
+        <div class="f-group"><label>Unité</label><input id="pUnit" class="f-inp" placeholder="bouteille 33cl"></div>
+        <div class="f-group"><label>Image URL</label><input id="pImg" class="f-inp" placeholder="https://…"></div>
+        <div class="f-group" style="grid-column:1/-1"><label>Description</label><textarea id="pDesc" class="f-inp" style="resize:none;height:56px" placeholder="Ingrédients, origine…"></textarea></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button onclick="submitProduct()" class="f-btn">💾 Enregistrer</button>
+        <button onclick="resetForm()" style="padding:10px 20px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;cursor:pointer">Annuler</button>
+        <a href="/api/merchant/journal" style="padding:10px 20px;background:#374151;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;margin-left:auto">⬇ Journal CSV</a>
+      </div>
+      <input type="hidden" id="pEditId">
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Image</th><th>Nom</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>Actions</th></tr></thead>
+        <tbody id="productsBody"><tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- COMMANDES -->
+  <div id="panel-orders" style="display:none">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button onclick="filterOrders('')"        class="f-btn" style="background:#f3f4f6;color:#374151;padding:7px 14px">Toutes</button>
+      <button onclick="filterOrders('PENDING')" class="f-btn" style="background:#fef9c3;color:#854d0e;padding:7px 14px">⏳ En attente</button>
+      <button onclick="filterOrders('VALIDÉ')"  class="f-btn" style="background:#dcfce7;color:#166534;padding:7px 14px">✅ Validées</button>
+      <button onclick="filterOrders('LIVRÉ')"   class="f-btn" style="background:#f0fdf4;color:#166534;padding:7px 14px">📦 Livrées</button>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>N° commande</th><th>Client</th><th>Produits</th><th>Montant</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody id="ordersBody"><tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STOCKS -->
+  <div id="panel-stock" style="display:none">
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Produit</th><th>Stock actuel</th><th>Réservé</th><th>Disponible</th><th>Statut</th><th>Ajouter stock</th></tr></thead>
+        <tbody id="stockBody"><tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div id="panel-notifications" style="display:none">
+    <div style="background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center">
+        <p style="font-size:14px;font-weight:700">Notifications</p>
+        <button onclick="markAllRead()" style="font-size:12px;color:#f97316;background:none;border:none;cursor:pointer;font-weight:600">Tout marquer lu</button>
+      </div>
+      <div id="notifList"><div style="padding:40px;text-align:center;color:#9ca3af">Chargement…</div></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toastWrap" class="gp-toast-wrap"></div>
+<script src="/js/merchant.js"></script>
+</body>
+</html>

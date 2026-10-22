@@ -3,102 +3,234 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin — Green Pepper Market</title>
+  <title>Administration — Green Pepper Market</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="/css/style.css" rel="stylesheet">
+  <style>
+    body{background:#f3f4f6;font-family:'Inter',sans-serif}
+    .adm-header{background:#111827;color:#fff;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .adm-nav a{color:rgba(255,255,255,.7);font-size:13px;margin-left:16px;text-decoration:none;cursor:pointer}
+    .adm-nav a:hover{color:#fff}
+    .adm-main{max-width:1400px;margin:0 auto;padding:24px 16px}
+    .stat-card{background:#fff;border-radius:14px;padding:20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .stat-val{font-size:28px;font-weight:900;color:#f97316}
+    .stat-lbl{font-size:11px;color:#6b7280;margin-top:4px}
+    .tabs{display:flex;gap:4px;border-bottom:2px solid #e5e7eb;margin-bottom:20px;overflow-x:auto}
+    .tab-btn{padding:10px 20px;font-size:13px;font-weight:600;color:#6b7280;border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px}
+    .tab-btn.active{color:#f97316;border-color:#f97316}
+    .tbl-wrap{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{background:#f9fafb;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+    td{padding:12px 14px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#fafafa}
+    .pill{display:inline-block;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+    .pill-online{background:#dcfce7;color:#166534}
+    .pill-offline{background:#f3f4f6;color:#6b7280}
+    .pill-banned{background:#fee2e2;color:#991b1b}
+    .pill-pending{background:#fef9c3;color:#854d0e}
+    .pill-valide{background:#dcfce7;color:#166534}
+    .pill-refuse{background:#fee2e2;color:#991b1b}
+    .action-btn{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none}
+    .btn-ban{background:#fff1f2;color:#e11d48;border:1px solid #fda4af}
+    .btn-del{background:#fff1f2;color:#dc2626;border:1px solid #fca5a5}
+    .btn-enter{background:#fef9c3;color:#854d0e;border:1px solid #fde68a}
+    .btn-kyc{background:#f0fdf4;color:#16a34a;border:1px solid #86efac}
+    .btn-disc{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+    .online-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+    .dot-green{background:#22c55e}
+    .dot-gray{background:#9ca3af}
+    .form-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+    .f-group{display:flex;flex-direction:column;gap:5px}
+    .f-group label{font-size:11px;font-weight:600;color:#374151}
+    .f-inp{padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;outline:none}
+    .f-inp:focus{border-color:#f97316}
+    .f-btn{padding:10px 20px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+    .f-btn:hover{background:#ea6c00}
+    #impersonateBanner{background:#dc2626;color:#fff;text-align:center;padding:10px 20px;font-size:14px;font-weight:600;display:none}
+    .filter-btn{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer}
+    .filter-btn.active{background:#f97316;color:#fff;border-color:#f97316}
+  </style>
 </head>
-<body style="background:#f3f4f6;min-height:100vh">
+<body>
+
+<div id="impersonateBanner">
+  Connecté en tant que <span id="impersonateName"></span> (par admin) —
+  <button onclick="exitImpersonate()" style="background:rgba(255,255,255,.2);border:1px solid #fff;color:#fff;padding:3px 12px;border-radius:6px;cursor:pointer;margin-left:10px;font-size:13px">Retour Admin</button>
+</div>
 
 <header class="adm-header">
-  <h1>🌶️ Green Pepper — Administration</h1>
+  <span style="font-family:'Playfair Display',serif;font-size:18px">🌶️ Green Pepper — Admin</span>
   <nav class="adm-nav">
-    <a href="/">← Site</a>
-    <a href="#" onclick="loadTab('orders')">Commandes</a>
-    <a href="#" onclick="loadTab('products')">Produits</a>
+    <a onclick="switchTab('dashboard')">Dashboard</a>
+    <a onclick="switchTab('online')">Connectés <span id="onlineBadge" style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:100px;font-size:10px">0</span></a>
+    <a onclick="switchTab('users')">Utilisateurs</a>
+    <a onclick="switchTab('shops')">Boutiques</a>
+    <a onclick="switchTab('products')">Produits</a>
+    <a onclick="switchTab('orders')">Commandes</a>
+    <a onclick="switchTab('audit')">Audit</a>
+    <a href="/" style="margin-left:20px">← Site</a>
+    <a onclick="doLogout()" style="color:#f97316">Déconnexion</a>
   </nav>
 </header>
 
 <main class="adm-main">
 
-  <!-- Stats -->
-  <div class="adm-stats" id="statsGrid">
-    <div class="adm-stat"><div class="adm-stat-val" id="stProducts">—</div><div class="adm-stat-lbl">Produits</div></div>
-    <div class="adm-stat"><div class="adm-stat-val" id="stTotal">—</div><div class="adm-stat-lbl">Commandes</div></div>
-    <div class="adm-stat"><div class="adm-stat-val" id="stPending" style="color:#f59e0b">—</div><div class="adm-stat-lbl">En attente</div></div>
-    <div class="adm-stat"><div class="adm-stat-val" id="stValide" style="color:#16a34a">—</div><div class="adm-stat-lbl">Validées</div></div>
-    <div class="adm-stat"><div class="adm-stat-val" id="stRefuse" style="color:#ef4444">—</div><div class="adm-stat-lbl">Refusées</div></div>
-    <div class="adm-stat"><div class="adm-stat-val" id="stRevenue" style="color:#f97316">—</div><div class="adm-stat-lbl">FCFA</div></div>
-  </div>
-
-  <!-- Tabs -->
-  <div class="adm-tabs">
-    <button id="tab-orders"   class="adm-tab active" onclick="loadTab('orders')">📦 Commandes</button>
-    <button id="tab-products" class="adm-tab"        onclick="loadTab('products')">🛍️ Produits</button>
-  </div>
-
-  <!-- COMMANDES -->
-  <div id="panel-orders">
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <button onclick="filterOrders('')"        class="adm-filter-btn active" data-s="">Toutes</button>
-      <button onclick="filterOrders('PENDING')" class="adm-filter-btn" data-s="PENDING">⏳ En attente</button>
-      <button onclick="filterOrders('VALIDÉ')"  class="adm-filter-btn" data-s="VALIDÉ">✅ Validées</button>
-      <button onclick="filterOrders('REFUSÉ')"  class="adm-filter-btn" data-s="REFUSÉ">❌ Refusées</button>
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px">
+      <div class="stat-card"><div class="stat-val" id="stUsers">—</div><div class="stat-lbl">Clients</div></div>
+      <div class="stat-card"><div class="stat-val" id="stMerchants">—</div><div class="stat-lbl">Marchands</div></div>
+      <div class="stat-card"><div class="stat-val" id="stOnline" style="color:#22c55e">—</div><div class="stat-lbl">En ligne</div></div>
+      <div class="stat-card"><div class="stat-val" id="stProducts">—</div><div class="stat-lbl">Produits</div></div>
+      <div class="stat-card"><div class="stat-val" id="stPending" style="color:#f59e0b">—</div><div class="stat-lbl">En attente</div></div>
+      <div class="stat-card"><div class="stat-val" id="stValide" style="color:#22c55e">—</div><div class="stat-lbl">Validées</div></div>
+      <div class="stat-card"><div class="stat-val" id="stRevenue" style="color:#f97316">—</div><div class="stat-lbl">CA (FCFA)</div></div>
     </div>
-    <div class="adm-table-wrap">
-      <table class="adm-table">
+    <div style="background:#fff;border-radius:14px;padding:20px">
+      <p style="font-size:14px;font-weight:600;margin-bottom:12px">Actions rapides</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <button onclick="switchTab('online')" class="f-btn">Voir les connectés</button>
+        <button onclick="fetch('/api/products/seed').then(r=>r.json()).then(d=>{alert(d.message);loadStats()})" class="f-btn" style="background:#16a34a">Seed produits</button>
+        <a href="/api/admin/journal" style="padding:10px 20px;background:#374151;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">⬇ Journal CSV</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTÉS EN TEMPS RÉEL -->
+  <div id="tab-online" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:700">Utilisateurs connectés <span id="onlineCount" style="background:#dcfce7;color:#166534;padding:2px 10px;border-radius:100px;font-size:13px">0</span></h2>
+      <span style="font-size:12px;color:#9ca3af">Actualisation auto toutes les 10s</span>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
         <thead><tr>
-          <th>Référence</th><th>Client</th><th>Téléphone</th><th>Produits</th>
-          <th>Total</th><th>Opérateur</th><th>Statut</th><th>Date</th>
+          <th>Statut</th><th>Nom</th><th>Rôle</th><th>Téléphone</th>
+          <th>IP</th><th>Dernière activité</th><th>Panier</th><th>Commande</th><th>Actions</th>
         </tr></thead>
-        <tbody id="ordersBody"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+        <tbody id="onlineTable"><tr><td colspan="9" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- PRODUITS -->
-  <div id="panel-products" style="display:none">
-    <!-- Formulaire ajout -->
-    <div class="adm-form">
-      <h3 id="formTitle">➕ Nouveau produit</h3>
-      <input type="hidden" id="editId">
-      <div class="adm-form-grid">
-        <div class="adm-field"><label>Nom *</label><input id="fName" class="adm-input" placeholder="Ex: Jus de Bissap"></div>
-        <div class="adm-field"><label>Prix (FCFA) *</label><input id="fPrice" type="number" class="adm-input" placeholder="1500"></div>
-        <div class="adm-field"><label>Stock *</label><input id="fStock" type="number" class="adm-input" placeholder="100"></div>
-        <div class="adm-field"><label>Catégorie</label><input id="fCategory" class="adm-input" placeholder="Boissons"></div>
-        <div class="adm-field"><label>Unité</label><input id="fUnit" class="adm-input" placeholder="bouteille 50cl"></div>
-        <div class="adm-field"><label>URL Image</label><input id="fImage" class="adm-input" placeholder="https://…"></div>
-        <div class="adm-field" style="grid-column:1/-1"><label>Description</label><input id="fDesc" class="adm-input" placeholder="Description courte"></div>
+  <!-- UTILISATEURS -->
+  <div id="tab-users" style="display:none">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button onclick="filterUsers('')"         class="filter-btn active" data-r="">Tous</button>
+      <button onclick="filterUsers('customer')" class="filter-btn" data-r="customer">Clients</button>
+      <button onclick="filterUsers('merchant')" class="filter-btn" data-r="merchant">Marchands</button>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Nom</th><th>Email</th><th>Téléphone</th><th>Rôle</th>
+          <th>Statut</th><th>Inscrit le</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="usersTable"><tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BOUTIQUES -->
+  <div id="tab-shops" style="display:none">
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Boutique</th><th>Propriétaire</th><th>Catégorie</th><th>KYC</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody id="shopsTable"><tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PRODUITS + RÉDUCTIONS -->
+  <div id="tab-products" style="display:none">
+    <div class="form-card">
+      <p style="font-size:14px;font-weight:700;margin-bottom:14px">➕ Nouveau produit</p>
+      <div class="form-grid">
+        <div class="f-group"><label>Nom</label><input id="pName" class="f-inp" placeholder="Jus de Bissap"></div>
+        <div class="f-group"><label>Prix (FCFA)</label><input id="pPrice" type="number" class="f-inp" placeholder="1500"></div>
+        <div class="f-group"><label>Stock</label><input id="pStock" type="number" class="f-inp" placeholder="100"></div>
+        <div class="f-group"><label>Catégorie</label><input id="pCat" class="f-inp" placeholder="Boissons"></div>
+        <div class="f-group"><label>Unité</label><input id="pUnit" class="f-inp" placeholder="bouteille 50cl"></div>
+        <div class="f-group"><label>Image URL</label><input id="pImg" class="f-inp" placeholder="https://…"></div>
+        <div class="f-group" style="grid-column:1/-1"><label>Description</label><input id="pDesc" class="f-inp" placeholder="Description courte"></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:14px">
-        <button onclick="submitProduct()" class="adm-submit">💾 Enregistrer</button>
-        <button onclick="resetForm()" style="padding:10px 20px;border-radius:8px;border:1px solid #e5e7eb;font-size:14px;background:#fff">Annuler</button>
-        <button onclick="seedProducts()" style="padding:10px 20px;border-radius:8px;border:1px solid #e5e7eb;font-size:14px;background:#fff;margin-left:auto">🌱 Seed 6 produits</button>
+        <button onclick="submitProduct()" class="f-btn">💾 Enregistrer</button>
+        <button onclick="resetProductForm()" style="padding:10px 20px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;cursor:pointer">Annuler</button>
+        <button onclick="seedProds()" style="padding:10px 20px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;cursor:pointer;margin-left:auto">🌱 Seed 6 produits</button>
       </div>
+      <input type="hidden" id="pEditId">
     </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Image</th><th>Nom</th><th>Cat.</th><th>Prix</th><th>Stock</th><th>Remise</th><th>Actions</th></tr></thead>
+        <tbody id="productsTable"><tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 
-    <!-- Table produits -->
-    <div class="adm-table-wrap">
-      <table class="adm-table">
-        <thead><tr>
-          <th>Image</th><th>Nom</th><th>Catégorie</th><th>Prix</th>
-          <th>Stock</th><th>Unité</th><th>Actif</th><th>Actions</th>
-        </tr></thead>
-        <tbody id="productsBody"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+  <!-- COMMANDES -->
+  <div id="tab-orders" style="display:none">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button onclick="filterOrders('')"        class="filter-btn active" data-s="">Toutes</button>
+      <button onclick="filterOrders('PENDING')" class="filter-btn" data-s="PENDING">⏳ En attente</button>
+      <button onclick="filterOrders('VALIDÉ')"  class="filter-btn" data-s="VALIDÉ">✅ Validées</button>
+      <button onclick="filterOrders('REFUSÉ')"  class="filter-btn" data-s="REFUSÉ">❌ Refusées</button>
+      <button onclick="filterOrders('LIVRÉ')"   class="filter-btn" data-s="LIVRÉ">📦 Livrées</button>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>N°</th><th>Client</th><th>Produits</th><th>Total</th><th>Opérateur</th><th>Statut</th><th>Date</th><th>Facture</th></tr></thead>
+        <tbody id="ordersTable"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- AUDIT -->
+  <div id="tab-audit" style="display:none">
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Date</th><th>Admin</th><th>Action</th><th>Cible</th><th>IP</th><th>Détails</th></tr></thead>
+        <tbody id="auditTable"><tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
       </table>
     </div>
   </div>
 
 </main>
 
+<!-- MODAL DISCOUNT -->
+<div id="discountModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:360px;max-width:90vw">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">🏷️ Appliquer une réduction</h3>
+    <input type="hidden" id="discProductId">
+    <div class="f-group" style="margin-bottom:12px"><label>Réduction (0–90 %)</label><input id="discPercent" type="number" min="0" max="90" class="f-inp" placeholder="20"></div>
+    <div class="f-group" style="margin-bottom:20px"><label>Expire le</label><input id="discExpiry" type="datetime-local" class="f-inp"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="submitDiscount()" class="f-btn" style="flex:1">Appliquer</button>
+      <button onclick="closeDiscountModal()" style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;cursor:pointer">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPERSONATE -->
+<div id="impersonateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:380px;max-width:90vw">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px">🔑 Entrer dans la boutique</h3>
+    <p id="impersEmail" style="font-size:13px;color:#6b7280;margin-bottom:16px"></p>
+    <div class="f-group" style="margin-bottom:12px"><label>Votre login admin</label><input id="impLogin" class="f-inp" placeholder="quentin"></div>
+    <div class="f-group" style="margin-bottom:20px"><label>Votre mot de passe admin</label><input id="impPassword" type="password" class="f-inp" placeholder="••••••••"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="submitImpersonate()" class="f-btn" style="flex:1;background:#dc2626">Entrer</button>
+      <button onclick="closeImpersonateModal()" style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;cursor:pointer">Annuler</button>
+    </div>
+    <p id="impErr" style="color:#dc2626;font-size:12px;text-align:center;margin-top:8px;display:none"></p>
+  </div>
+</div>
+
 <div id="toastWrap" class="gp-toast-wrap"></div>
-
-<style>
-.adm-filter-btn{padding:7px 16px;border-radius:100px;font-size:12px;font-weight:600;border:1.5px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer}
-.adm-filter-btn.active{background:#f97316;color:#fff;border-color:#f97316}
-</style>
-
 <script src="/js/admin.js"></script>
 </body>
 </html>
