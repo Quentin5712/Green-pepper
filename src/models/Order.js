@@ -1,28 +1,38 @@
 'use strict';
 const mongoose = require('mongoose');
 
+function genOrderNumber() {
+  return 'GP-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*9000)+1000);
+}
+
 const OrderSchema = new mongoose.Schema({
-  customerPhone:      { type: String, required: true },
-  customerName:       { type: String, default: 'Client anonyme' },
-  location:           { type: String, default: '' },
-  products: [{
-    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-    name:      String,
-    price:     Number,
-    quantity:  { type: Number, default: 1 },
-    sellerId:  String,
+  orderNumber:   { type: String, default: genOrderNumber, unique: true },
+  userId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  guestPhone:    { type: String, default: '' },
+  shopId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Shop' },
+  items: [{
+    productId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    name:            String,
+    qty:             { type: Number, default: 1 },
+    priceAtPurchase: Number,
+    discountApplied: { type: Number, default: 0 },
+    sellerId:        String,
   }],
-  total:              { type: Number, required: true },
-  deliveryFee:        { type: Number, default: 0 },
-  status:             { type: String, enum: ['PENDING','VALIDÉ','REFUSÉ'], default: 'PENDING' },
-  kpayTransactionId:  { type: String, default: '' },
-  externalId:         { type: String, required: true, unique: true },
-  provider:           { type: String, enum: ['MTN_MOMO_CMR','ORANGE_CMR'], required: true },
-  kpayResponse:       { type: mongoose.Schema.Types.Mixed },
+  amount:        { type: Number, required: true },
+  finalAmount:   { type: Number, required: true },
+  commission:    { type: Number, default: 0 },
+  deliveryFee:   { type: Number, default: 0 },
+  address:       { type: String, default: '' },
+  status:        { type: String, enum: ['PENDING','VALIDÉ','REFUSÉ','EXPIRED','NEGOCIATED','LIVRÉ'], default: 'PENDING' },
+  externalId:    { type: String, required: true, unique: true },
+  provider:      { type: String, enum: ['MTN_MOMO_CMR','ORANGE_CMR'], required: true },
+  kpayTxId:      { type: String, default: '' },
+  trackingNumber:{ type: String, default: '' },
+  kpayResponse:  { type: mongoose.Schema.Types.Mixed },
 }, { timestamps: true });
 
 OrderSchema.index({ externalId: 1 });
-OrderSchema.index({ status: 1, createdAt: -1 });
-OrderSchema.index({ customerPhone: 1 });
+OrderSchema.index({ userId: 1, status: 1 });
+OrderSchema.index({ shopId: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', OrderSchema);

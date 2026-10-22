@@ -1,18 +1,16 @@
 'use strict';
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-const NotificationSchema = new Schema({
-  sellerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  type:     { type: String, enum: ['order','stock_low','system'], default: 'order' },
+const NotificationSchema = new mongoose.Schema({
+  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  role:     { type: String, enum: ['customer','merchant','admin'], default: 'customer' },
   message:  { type: String, required: true, maxlength: 500 },
-  orderId:  { type: Schema.Types.ObjectId, ref: 'Order', sparse: true },
-  read:     { type: Boolean, default: false },
+  type:     { type: String, enum: ['ORDER','PAYMENT','STOCK','CHAT','SYSTEM'], default: 'SYSTEM' },
+  isRead:   { type: Boolean, default: false },
+  refId:    { type: String, default: '' },
 }, { timestamps: true });
 
-NotificationSchema.index({ sellerId: 1, read: 1 });
-NotificationSchema.index({ createdAt: -1 });
-// TTL : supprimer les notifs lues après 30 jours
-NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600, partialFilterExpression: { read: true } });
+NotificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
+NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 });
 
 module.exports = mongoose.model('Notification', NotificationSchema);
