@@ -65,10 +65,11 @@ app.use(cors({
 app.use(globalLimit);
 
 // ── Body parsing + rawBody pour HMAC callback ──
-app.use((req, res, next) => {
-  let data = '';
-  req.on('data', chunk => data += chunk);
-  req.on('end', () => { req.rawBody = data; next(); });
+// On capture le rawBody SEULEMENT pour /api/payment/callback via express.raw()
+app.use('/api/payment/callback', (req, res, next) => {
+  let data = Buffer.alloc(0);
+  req.on('data', chunk => { data = Buffer.concat([data, chunk]); });
+  req.on('end', () => { req.rawBody = data.toString('utf8'); next(); });
 });
 app.use(express.json({ limit:'2mb' }));
 app.use(express.urlencoded({ extended:true, limit:'2mb' }));
