@@ -105,7 +105,7 @@ async function pay(req, res) {
 async function callback(req, res) {
   try {
     const sig = req.headers['x-kpay-signature'] || req.headers['x-signature'] || '';
-    const rawBody = req.rawBody || JSON.stringify(req.body);
+    const rawBody = req.rawBody || JSON.stringify(req.body); // rawBody depuis middleware
 
     if (!kpay.verifyHmac(rawBody, sig)) {
       logger.warn(`CALLBACK HMAC INVALID: ip=${req.ip}`);

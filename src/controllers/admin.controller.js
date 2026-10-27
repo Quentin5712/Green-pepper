@@ -1,5 +1,6 @@
 'use strict';
 const bcrypt   = require('bcryptjs');
+const Settings = require('../models/Settings');
 const jwt      = require('jsonwebtoken');
 const User     = require('../models/User');
 const Product  = require('../models/Product');
@@ -299,7 +300,6 @@ async function getJournalCsv(req, res) {
 // ══════════════════════════════════════════════
 async function getSettings(req, res) {
   try {
-    const Settings = require('../models/Settings');
     const settings = await Settings.find().lean();
     const obj = {}; settings.forEach(s => obj[s.key] = s.value);
     res.json(obj);

@@ -31,7 +31,7 @@ async function getStats(req, res) {
 
 async function getJournalCsv(req, res) {
   try {
-    const logs = await TransactionLog.find({ shopId: req.user.shopId }).sort({ date:-1 }).lean();
+    const logs = await TransactionLog.find({ $or: [{ shopId: req.user.shopId }, { 'order.sellerId': req.user.id }] }).sort({ date:-1 }).lean();
     const head = 'date;orderId;externalId;amount;finalAmount;commission;status';
     const body = logs.map(l => [new Date(l.date).toLocaleString('fr-FR'),l.orderId,l.externalId,l.amount,l.finalAmount,l.commission,l.status].join(';'));
     res.setHeader('Content-Type','text/csv;charset=utf-8');

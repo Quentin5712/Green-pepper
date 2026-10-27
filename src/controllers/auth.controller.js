@@ -100,9 +100,12 @@ async function me(req, res) {
 
 async function deleteMe(req, res) {
   try {
-    await User.findByIdAndUpdate(req.user.id, {
+    const uid = req.user.id;
+    await User.findByIdAndUpdate(uid, {
       isDeleted: true, deletedAt: new Date(), isOnline: false,
-      name: 'Utilisateur supprimé', email: `deleted_${req.user.id}@anon.gp`, phone: '',
+      name: 'Utilisateur supprimé',
+      email: `deleted_${uid}_${Date.now()}@anon.gp`,
+      phone: '',
       $inc: { tokenVersion: 1 },
     });
     res.clearCookie('gp_refresh');
