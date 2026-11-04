@@ -35,11 +35,15 @@ async function getStatus(externalId) {
 }
 
 function verifyHmac(body, sigHeader) {
-  if (!G_SECRET) return false;
+  const secret = process.env.KPAY_WEBHOOK_SECRET || process.env.KPAY_GATEWAY_SECRET || G_SECRET;
+  if (!secret || !sigHeader) return false;
   const raw = typeof body === 'string' ? body : JSON.stringify(body);
-  const expected = crypto.createHmac('sha256', G_SECRET).update(raw).digest('hex');
-  try { return sigHeader.length === expected.length && crypto.timingSafeEqual(Buffer.from(sigHeader), Buffer.from(expected)); }
-  catch(e) { return false; }
+  const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');
+  const received = String(sigHeader).replace(/^sha256=/i, '').trim();
+  try {
+    return received.length === expected.length &&
+           crypto.timingSafeEqual(Buffer.from(received), Buffer.from(expected));
+  } catch(e) { return false; }
 }
 
 module.exports = { initPayment, getStatus, verifyHmac, formatPhone };
