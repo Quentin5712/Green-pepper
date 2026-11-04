@@ -2,12 +2,6 @@
 const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 
-function maskPhone(p) {
-  if (!p || p.length < 9) return '***';
-  const s = String(p).replace(/\s/g, '');
-  return s.slice(0, 5) + '** **' + ' ' + s.slice(-2);
-}
-
 const UserSchema = new mongoose.Schema({
   name:         { type: String, required: true, trim: true, maxlength: 100 },
   email:        { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -15,19 +9,24 @@ const UserSchema = new mongoose.Schema({
   phone:        { type: String, trim: true },
   role:         { type: String, enum: ['customer','merchant','admin'], default: 'customer' },
   shopId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
+  // Auth sécurisée
   tokenVersion: { type: Number, default: 0 },
+  // Statut
   isActive:     { type: Boolean, default: true },
   isBanned:     { type: Boolean, default: false },
   banReason:    { type: String, default: '' },
   bannedAt:     { type: Date },
   isDeleted:    { type: Boolean, default: false },
   deletedAt:    { type: Date },
+  // Activité temps réel
   isOnline:     { type: Boolean, default: false, index: true },
   lastActive:   { type: Date },
   currentIP:    { type: String, default: '' },
   sessionId:    { type: String, default: '' },
+  // KYC
   kycStatus:    { type: String, enum: ['PENDING','VERIFIED'], default: 'PENDING' },
   kycDocUrl:    { type: String, default: '' },
+  // Marchand
   storeName:    { type: String, trim: true },
   expiresAt:    { type: Date },
 }, {
@@ -41,6 +40,12 @@ const UserSchema = new mongoose.Schema({
     }
   }
 });
+
+function maskPhone(p) {
+  if (!p || p.length < 9) return '***';
+  const s = String(p).replace(/\s/g, '');
+  return s.slice(0, 5) + '** **' + ' ' + s.slice(-2);
+}
 
 UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
@@ -56,4 +61,4 @@ UserSchema.index({ email: 1 });
 UserSchema.index({ isOnline: 1, lastActive: -1 });
 UserSchema.index({ isDeleted: 1, role: 1 });
 
-module.exports = mongoose.models.User || mongoose.model('User', UserSchema);
+module.exports = mongoose.model('User', UserSchema);
