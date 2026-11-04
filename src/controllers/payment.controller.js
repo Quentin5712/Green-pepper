@@ -101,59 +101,94 @@ async function pay(req, res) {
   }
 }
 
-// POST /api/payment/callback — webhook KPay avec HMAC
+// ── Normalisation du statut KPay ──
+const OK_STATUS   = ['SUCCESS','SUCCESSFUL','PAID','COMPLETED','VALIDATED'];
+const FAIL_STATUS = ['FAILED','REJECTED','CANCELLED','CANCELED','EXPIRED','REFUSED','DECLINED'];
+function normalizeStatus(raw) {
+  const st = String(raw || '').toUpperCase();
+  if (OK_STATUS.includes(st))   return 'SUCCESS';
+  if (FAIL_STATUS.includes(st)) return 'FAILED';
+  return 'PENDING';
+}
+
+// ── Applique le résultat final sur une commande (idempotent) ──
+async function applyResult(order, outcome, txId, raw, ip) {
+  if (order.status !== 'PENDING') return order.status;
+  const isSuccess = outcome === 'SUCCESS';
+  const newStatus = isSuccess ? 'VALIDÉ' : 'REFUSÉ';
+
+  // Verrou atomique : un seul traitement même si callback + polling arrivent ensemble
+  const locked = await Order.findOneAndUpdate(
+    { _id: order._id, status: 'PENDING' },
+    { status: newStatus, kpayTxId: txId || '', kpayResponse: raw },
+    { new: true }
+  );
+  if (!locked) return order.status;
+
+  await TransactionLog.create({ orderId: order._id, externalId: order.externalId, amount: order.amount, finalAmount: order.finalAmount, commission: order.commission, status: newStatus, provider: order.provider, ip });
+
+  if (isSuccess) {
+    for (const item of order.items) {
+      if (item.productId) await Product.findByIdAndUpdate(item.productId, { $inc: { reserved: -item.qty } });
+    }
+    if (order.userId) await Cart.deleteMany({ userId: order.userId });
+    await generateInvoice(locked);
+    if (order.userId) await notifyUser(order.userId, 'customer', `✅ Commande ${order.orderNumber} confirmée — ${order.finalAmount.toLocaleString('fr-FR')} FCFA`, 'PAYMENT', String(order._id));
+    const sellerIds = [...new Set((order.items||[]).map(i=>i.sellerId).filter(Boolean))];
+    for (const sid of sellerIds) await notifyMerchant(sid, `🛒 Nouvelle commande VALIDÉE — ${order.orderNumber} — ${order.finalAmount.toLocaleString('fr-FR')} FCFA`, 'ORDER');
+    logger.info(`VALIDÉ: order=${order._id} ext=${order.externalId} tx=${txId}`);
+  } else {
+    for (const item of order.items) {
+      if (item.productId) await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.qty, reserved: -item.qty } });
+    }
+    if (order.userId) await notifyUser(order.userId, 'customer', `❌ Paiement refusé pour la commande ${order.orderNumber}`, 'PAYMENT', String(order._id));
+    logger.info(`REFUSÉ: order=${order._id} ext=${order.externalId}`);
+  }
+  return newStatus;
+}
+
+// POST /api/payment/callback — webhook KPay
+// Sécurité : on ne fait JAMAIS confiance au corps du webhook seul.
+//  1) signature HMAC valide → on accepte le statut reçu
+//  2) sinon → on interroge KPay directement avec notre clé API (serveur à serveur)
 async function callback(req, res) {
   try {
-    const sig = req.headers['x-kpay-signature'] || req.headers['x-signature'] || '';
-    const rawBody = req.rawBody || JSON.stringify(req.body); // rawBody depuis middleware
-
-    if (!kpay.verifyHmac(rawBody, sig)) {
-      logger.warn(`CALLBACK HMAC INVALID: ip=${req.ip}`);
-      return res.status(401).json({ error: 'Signature HMAC invalide' });
+    const body = req.body || {};
+    const d = body.data || body.payment || {};
+    const externalId = body.externalId || body.external_id || d.externalId || d.external_id;
+    const evt = String(body.event || body.type || '').toLowerCase();
+    let status = body.status || d.status;
+    if (!status) {
+      if (evt.includes('completed') || evt.includes('success')) status = 'SUCCESS';
+      else if (evt.includes('failed') || evt.includes('cancel') || evt.includes('expired')) status = 'FAILED';
     }
-
-    const { externalId, status, transactionId } = req.body;
-    if (!externalId || !status) return res.status(400).json({ error: 'externalId et status requis' });
+    const transactionId = body.transactionId || body.id || d.transactionId || d.id || '';
+    if (!externalId) return res.status(400).json({ error: 'externalId requis' });
 
     const order = await Order.findOne({ externalId });
     if (!order) { logger.warn(`CALLBACK: order not found ext=${externalId}`); return res.status(404).json({ error: 'Commande introuvable' }); }
-
-    // Idempotence — déjà traité
     if (order.status !== 'PENDING') return res.json({ ok: true, status: order.status });
 
-    const isSuccess = ['SUCCESS','SUCCESSFUL','PAID'].includes(status);
-    const newStatus = isSuccess ? 'VALIDÉ' : 'REFUSÉ';
+    const sig = req.headers['x-kpay-signature'] || req.headers['x-signature'] || '';
+    let outcome = null, txId = transactionId || '';
 
-    await Order.findByIdAndUpdate(order._id, { status: newStatus, kpayTxId: transactionId || '', kpayResponse: req.body });
-    await TransactionLog.create({ orderId: order._id, externalId, amount: order.amount, finalAmount: order.finalAmount, commission: order.commission, status: newStatus, provider: order.provider, ip: req.ip });
-
-    if (isSuccess) {
-      // Libérer les reserved (stock déjà décrémenté à la commande)
-      for (const item of order.items) {
-        if (item.productId) await Product.findByIdAndUpdate(item.productId, { $inc: { reserved: -item.qty } });
-      }
-      // Vider le panier si user connecté
-      if (order.userId) await Cart.deleteMany({ userId: order.userId });
-
-      // Générer facture PDF
-      const invoicePath = await generateInvoice(order);
-
-      // Notifier
-      if (order.userId) await notifyUser(order.userId, 'customer', `✅ Commande ${order.orderNumber} confirmée — ${order.finalAmount.toLocaleString('fr-FR')} FCFA`, 'PAYMENT', String(order._id));
-      const sellerIds = [...new Set((order.items||[]).map(i=>i.sellerId).filter(Boolean))];
-      for (const sid of sellerIds) await notifyMerchant(sid, `🛒 Nouvelle commande VALIDÉE — ${order.orderNumber} — ${order.finalAmount.toLocaleString('fr-FR')} FCFA`, 'ORDER');
-
-      logger.info(`VALIDÉ: order=${order._id} ext=${externalId} tx=${transactionId}`);
+    if (sig && kpay.verifyHmac(req.rawBody || JSON.stringify(req.body), sig)) {
+      outcome = normalizeStatus(status);
     } else {
-      // Remettre le stock en cas de refus
-      for (const item of order.items) {
-        if (item.productId) await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.qty, reserved: -item.qty } });
+      try {
+        const remote = await kpay.getStatus(externalId);
+        const rs = remote.status || remote.data?.status;
+        outcome = normalizeStatus(rs);
+        txId = remote.transactionId || remote.data?.transactionId || txId;
+      } catch(e) {
+        logger.warn(`CALLBACK non vérifiable ext=${externalId} ip=${req.ip}: ${e.message}`);
+        return res.status(401).json({ error: 'Callback non vérifiable' });
       }
-      if (order.userId) await notifyUser(order.userId, 'customer', `❌ Paiement refusé pour la commande ${order.orderNumber}`, 'PAYMENT', String(order._id));
-      logger.info(`REFUSÉ: order=${order._id} ext=${externalId}`);
     }
 
-    return res.json({ ok: true });
+    if (outcome === 'PENDING') return res.json({ ok: true, status: 'PENDING' });
+    const final = await applyResult(order, outcome, txId, req.body, req.ip);
+    return res.json({ ok: true, status: final });
   } catch(e) {
     logger.error('callback:', e.message);
     res.status(500).json({ error: 'Erreur traitement callback' });
@@ -163,9 +198,21 @@ async function callback(req, res) {
 // GET /api/payment/status/:externalId
 async function getStatus(req, res) {
   try {
-    const order = await Order.findOne({ externalId: req.params.externalId }).select('status orderNumber finalAmount createdAt kpayTxId').lean();
+    let order = await Order.findOne({ externalId: req.params.externalId });
     if (!order) return res.status(404).json({ error: 'Commande introuvable' });
-    res.json(order);
+
+    // Si le webhook n'est pas encore arrivé, on interroge KPay directement
+    if (order.status === 'PENDING' && process.env.KPAY_API_KEY) {
+      try {
+        const remote = await kpay.getStatus(order.externalId);
+        const outcome = normalizeStatus(remote.status || remote.data?.status);
+        if (outcome !== 'PENDING') {
+          await applyResult(order, outcome, remote.transactionId || remote.data?.transactionId || '', remote, req.ip);
+          order = await Order.findById(order._id);
+        }
+      } catch(e) { /* KPay injoignable : on renvoie l'état connu */ }
+    }
+    res.json({ status: order.status, orderNumber: order.orderNumber, finalAmount: order.finalAmount, createdAt: order.createdAt, kpayTxId: order.kpayTxId });
   } catch(e) { res.status(500).json({ error: e.message }); }
 }
 
