@@ -28,16 +28,16 @@ router.delete('/auth/me',     verifyToken, authCtrl.deleteMe);
 router.get ('/products',             optionalAuth, productCtrl.getAll);
 router.get ('/products/seed',        productCtrl.seed);
 router.get ('/products/:id',         productCtrl.getOne);
-router.post('/products',             verifyToken, productCtrl.create);
-router.put ('/products/:id',         verifyToken, productCtrl.update);
-router.delete('/products/:id',       verifyToken, productCtrl.remove);
-router.post('/products/:id/stock/add', verifyToken, productCtrl.addStock);
+router.post('/products',             verifyMerchant, productCtrl.create);
+router.put ('/products/:id',         verifyMerchant, productCtrl.update);
+router.delete('/products/:id',       verifyMerchant, productCtrl.remove);
+router.post('/products/:id/stock/add', verifyMerchant, productCtrl.addStock);
 
 // ── SHOPS ──
 router.get ('/shops',     shopCtrl.getAll);
 router.get ('/shops/:id', shopCtrl.getOne);
-router.post('/shops',     verifyToken, shopCtrl.create);
-router.put ('/shops/:id', verifyToken, shopCtrl.update);
+router.post('/shops',     verifyMerchant, shopCtrl.create);
+router.put ('/shops/:id', verifyMerchant, shopCtrl.update);
 
 // ── CART ──
 router.post  ('/cart/add',        verifyToken, cartCtrl.addToCart);
@@ -58,7 +58,7 @@ router.put('/orders/:id/status',   verifyToken, payCtrl.updateOrderStatus);
 // ── CHAT ──
 router.post('/chat/send',          verifyToken, chatCtrl.sendMessage);
 router.get ('/chat/:shopId',       verifyToken, chatCtrl.getChat);
-router.put ('/chat/:id/respond',   verifyToken, chatCtrl.respondMessage);
+router.put ('/chat/:id/respond',   verifyMerchant, chatCtrl.respondMessage);
 
 // ── REVIEWS ──
 router.post('/reviews/:productId', verifyToken, reviewCtrl.createReview);
@@ -95,6 +95,7 @@ router.delete('/admin/products/:id/discount',   verifyAdmin, adminCtrl.removeDis
 router.get   ('/admin/shops',                   verifyAdmin, adminCtrl.getShops);
 router.put   ('/admin/shops/:id/kyc',           verifyAdmin, adminCtrl.verifyShopKyc);
 router.delete('/admin/shops/:id',               verifyAdmin, adminCtrl.deleteShop);
+router.post('/admin/merchants',               verifyAdmin, adminCtrl.createMerchant);
 
 // ── ADMIN — Commandes ──
 router.get('/admin/orders',                     verifyAdmin, adminCtrl.getOrders);
