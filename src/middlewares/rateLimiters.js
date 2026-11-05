@@ -3,14 +3,14 @@ const rateLimit = require('express-rate-limit');
 const isProd    = () => process.env.NODE_ENV === 'production';
 
 const global_ = rateLimit({
-  windowMs: 15 * 60 * 1000, max: 100,
+  windowMs: 15 * 60 * 1000, max: 600,
   standardHeaders: true, legacyHeaders: false,
   message: { error: 'Trop de requêtes. Réessayez dans 15 minutes.' },
   skip: () => !isProd(),
 });
 
 const auth_ = rateLimit({
-  windowMs: 15 * 60 * 1000, max: 5,
+  windowMs: 15 * 60 * 1000, max: 5, skipSuccessfulRequests: true,
   standardHeaders: true, legacyHeaders: false,
   message: { error: 'Trop de tentatives. Réessayez dans 15 minutes.' },
   skip: () => !isProd(),
