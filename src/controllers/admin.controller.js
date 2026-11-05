@@ -1,4 +1,6 @@
 'use strict';
+const crypto   = require('crypto');
+const { clean, EMAIL_RE, PHONE_RE } = require('../utils/clean');
 const bcrypt   = require('bcryptjs');
 const Settings = require('../models/Settings');
 const jwt      = require('jsonwebtoken');
@@ -15,6 +17,22 @@ const logger   = require('../utils/logger');
 // ══════════════════════════════════════════════
 // CONNEXION ADMIN (quentin ou oceane)
 // ══════════════════════════════════════════════
+// Vérifie le mot de passe admin. Jamais de mot de passe « par défaut » en production.
+async function checkAdminPassword(password) {
+  const hash  = process.env.ADMIN_PASS_HASH || '';
+  const plain = process.env.ADMIN_PASSWORD  || '';
+  if (hash) return bcrypt.compare(String(password), hash);
+  if (plain) {
+    const a = Buffer.from(String(password)), b = Buffer.from(plain);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+  if (process.env.NODE_ENV === 'production') {
+    logger.error('ADMIN_PASSWORD / ADMIN_PASS_HASH manquant en production — connexion admin refusée');
+    return false;
+  }
+  return String(password).length >= 4; // développement local uniquement
+}
+
 async function adminLogin(req, res) {
   try {
     const { username, password } = req.body;
@@ -30,15 +48,7 @@ async function adminLogin(req, res) {
       return res.status(401).json({ error: 'Identifiants admin incorrects' });
     }
 
-    // Si ADMIN_PASS_HASH défini → vérifier bcrypt
-    // Sinon → accepter n'importe quel mot de passe (mode dev uniquement)
-    let ok = false;
-    if (ADMIN_PASS_HASH) {
-      ok = await bcrypt.compare(password, ADMIN_PASS_HASH);
-    } else {
-      ok = password.length >= 4; // mode dev sans hash
-      if (ok) logger.warn('ADMIN_PASS_HASH non défini — auth admin en mode développement');
-    }
+    const ok = await checkAdminPassword(password);
 
     if (!ok) {
       logger.warn(`ADMIN LOGIN FAILED: username=${username} ip=${req.ip}`);
@@ -77,9 +87,7 @@ async function loginAsShop(req, res) {
     const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || '';
     if (adminUser.toLowerCase() !== ADMIN_USER && adminUser.toLowerCase() !== 'oceane') return res.status(401).json({ error: 'Identifiants admin incorrects' });
 
-    let ok = false;
-    if (ADMIN_PASS_HASH) ok = await bcrypt.compare(adminPassword, ADMIN_PASS_HASH);
-    else ok = adminPassword.length >= 4;
+    const ok = await checkAdminPassword(adminPassword);
     if (!ok) return res.status(401).json({ error: 'Mot de passe admin incorrect' });
 
     const merchant = await User.findOne({ email: merchantEmail.toLowerCase(), role: 'merchant', isDeleted: false });
@@ -93,7 +101,7 @@ async function loginAsShop(req, res) {
 
     await AuditLog.create({ adminId: adminUser, action: 'ADMIN_IMPERSONATE_SHOP', targetId: String(merchant._id), details: { merchantEmail, shopId: merchant.shopId }, ip: req.ip });
     logger.info(`IMPERSONATE: ${adminUser} → ${merchantEmail} ip=${req.ip}`);
-    return res.json({ token, shopId: merchant.shopId, merchantName: merchant.name, message: `Connecté comme ${merchant.name}` });
+    return res.json({ token, shopId: merchant.shopId, merchantId: merchant._id, merchantName: merchant.name, message: `Connecté comme ${merchant.name}` });
   } catch(e) { logger.error('loginAsShop:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
 }
 
@@ -148,6 +156,9 @@ async function getUserActivity(req, res) {
 
 async function banUser(req, res) {
   try {
+    const target = await User.findById(req.params.id).select('role');
+    if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (target.role === 'admin') return res.status(400).json({ error: 'Impossible de bannir un administrateur' });
     const { isBanned, banReason } = req.body;
     const upd = { isBanned, banReason: banReason||'', $inc: { tokenVersion: 1 } };
     if (isBanned) upd.isOnline = false;
@@ -161,7 +172,10 @@ async function banUser(req, res) {
 
 async function deleteUser(req, res) {
   try {
-    await User.findByIdAndUpdate(req.params.id, { isDeleted: true, deletedAt: new Date(), isOnline: false, $inc: { tokenVersion: 1 } });
+    const target = await User.findById(req.params.id).select('role');
+    if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (target.role === 'admin') return res.status(400).json({ error: 'Impossible de supprimer un administrateur' });
+    await User.findByIdAndUpdate(req.params.id, { isDeleted: true, deletedAt: new Date(), isOnline: false, email: `deleted_${req.params.id}_${Date.now()}@anon.gp`, $inc: { tokenVersion: 1 } });
     await AuditLog.create({ adminId: req.user.id, action: 'DELETE_USER', targetId: req.params.id, ip: req.ip });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -317,11 +331,41 @@ async function updateSettings(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 }
 
+// ══════════════════════════════════════════════
+// CRÉER UN MARCHAND + SA BOUTIQUE
+// ══════════════════════════════════════════════
+async function createMerchant(req, res) {
+  try {
+    const name      = clean(req.body.name, 100);
+    const storeName = clean(req.body.storeName, 100);
+    const email     = String(req.body.email || '').trim().toLowerCase();
+    const phone     = String(req.body.phone || '').trim();
+    const password  = String(req.body.password || '');
+    const days      = Number(req.body.days);
+
+    if (!name || !storeName || !email || !password) return res.status(400).json({ error: 'Nom, boutique, e-mail et mot de passe requis' });
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Adresse e-mail invalide' });
+    if (phone && !PHONE_RE.test(phone)) return res.status(400).json({ error: 'Numéro de téléphone invalide' });
+    if (password.length < 6 || !/^[A-Z]/.test(password)) return res.status(400).json({ error: 'Mot de passe : 6 caractères minimum, première lettre en majuscule' });
+    if (await User.findOne({ email })) return res.status(409).json({ error: 'Cet e-mail est déjà utilisé' });
+
+    const expiresAt = days > 0 ? new Date(Date.now() + Math.min(days, 3650) * 86400000) : undefined;
+    const user = await User.create({ name, email, phone, password, role: 'merchant', storeName, expiresAt });
+    const shop = await Shop.create({ name: storeName, ownerId: user._id, phone });
+    user.shopId = shop._id;
+    await user.save();
+
+    await AuditLog.create({ adminId: req.user.id, action: 'CREATE_MERCHANT', targetId: String(user._id), details: { email, storeName, expiresAt }, ip: req.ip });
+    logger.info(`CREATE_MERCHANT: ${email} shop=${shop._id} ip=${req.ip}`);
+    res.status(201).json({ success: true, merchant: { id: user._id, name, email, storeName, shopId: shop._id, expiresAt } });
+  } catch(e) { logger.error('createMerchant:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+}
+
 module.exports = {
   adminLogin, loginAsShop,
   getUsers, getOnlineUsers, getUserActivity, banUser, deleteUser, revealPhone,
   setDiscount, removeDiscount,
-  getShops, verifyShopKyc, deleteShop,
+  getShops, verifyShopKyc, deleteShop, createMerchant,
   getStats, getOrders,
   getAudit, getJournalCsv,
   getSettings, updateSettings,

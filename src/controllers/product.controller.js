@@ -1,14 +1,25 @@
 'use strict';
 const Product = require('../models/Product');
-const xss     = require('xss');
-const san = s => typeof s==='string' ? xss(s.trim()).slice(0,2000) : s;
+const { clean, safeUrl } = require('../utils/clean');
+const san = s => typeof s==='string' ? clean(s, 2000) : s;
+
+// Un marchand ne modifie que SES produits ; l'admin modifie tout
+async function ownProduct(req, res) {
+  const p = await Product.findOne({ _id: req.params.id, isDeleted: false });
+  if (!p) { res.status(404).json({ error: 'Produit introuvable' }); return null; }
+  if (req.user.role !== 'admin' && String(p.sellerId) !== String(req.user.id)) {
+    res.status(403).json({ error: 'Ce produit ne vous appartient pas' }); return null;
+  }
+  return p;
+}
 
 async function getAll(req, res) {
   try {
-    const { q, category, minPrice, maxPrice, shopId, page=1, limit=48 } = req.query;
+    const { q, category, minPrice, maxPrice, shopId, sellerId, page=1, limit=48 } = req.query;
     const filter = { isActive:true, isDeleted:false };
     if (category) filter.category = new RegExp(san(category),'i');
     if (shopId)   filter.shopId   = shopId;
+    if (sellerId) filter.sellerId = san(String(sellerId));
     if (q)        filter.$text    = { $search: san(q) };
     if (minPrice || maxPrice) { filter.price={}; if(minPrice) filter.price.$gte=Number(minPrice); if(maxPrice) filter.price.$lte=Number(maxPrice); }
     const [products, total] = await Promise.all([
@@ -31,18 +42,22 @@ async function create(req, res) {
   try {
     const { name, price, stock, category, description, imageUrl, unit, shopId } = req.body;
     if (!name || !price || !req.user?.id) return res.status(400).json({ error:'name, price requis' });
-    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:san(category||'Divers'), description:san(description||''), imageUrl:imageUrl||'', unit:unit||'unité', sellerId:req.user.id, shopId:shopId||null });
+    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:san(category||'Divers'), description:san(description||''), imageUrl:safeUrl(imageUrl), unit:san(unit||'unité'), sellerId:req.user.id, shopId:req.user.shopId||null });
     res.status(201).json(p);
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
 
 async function update(req, res) {
   try {
+    if (!(await ownProduct(req, res))) return;
     const allowed = ['name','price','stock','category','description','imageUrl','unit','isActive'];
     const upd = {};
     allowed.forEach(k => { if(req.body[k]!==undefined) upd[k]=req.body[k]; });
     if(upd.name)        upd.name        = san(upd.name);
     if(upd.description) upd.description = san(upd.description);
+    if(upd.category) upd.category = san(upd.category);
+    if(upd.unit) upd.unit = san(upd.unit);
+    if(upd.imageUrl !== undefined) upd.imageUrl = safeUrl(upd.imageUrl);
     if(upd.price)       upd.price       = Number(upd.price);
     if(upd.stock!==undefined) upd.stock = Number(upd.stock);
     const p = await Product.findByIdAndUpdate(req.params.id, upd, { new:true, runValidators:true });
@@ -53,6 +68,7 @@ async function update(req, res) {
 
 async function remove(req, res) {
   try {
+    if (!(await ownProduct(req, res))) return;
     await Product.findByIdAndUpdate(req.params.id, { isDeleted:true, isActive:false });
     res.json({ success:true });
   } catch(e) { res.status(500).json({ error:e.message }); }
@@ -60,6 +76,7 @@ async function remove(req, res) {
 
 async function addStock(req, res) {
   try {
+    if (!(await ownProduct(req, res))) return;
     const qty = Number(req.body.quantity);
     if (!qty || qty < 1) return res.status(400).json({ error:'quantity invalide' });
     const p = await Product.findByIdAndUpdate(req.params.id, { $inc:{ stock:qty } }, { new:true });

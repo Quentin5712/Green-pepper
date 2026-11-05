@@ -8,14 +8,18 @@ const kpay     = require('../utils/kpay');
 const { generateInvoice } = require('../utils/invoice');
 const { notifyMerchant, notifyAdmin, notifyUser } = require('../utils/notify');
 const logger   = require('../utils/logger');
+const { clean, PHONE_RE } = require('../utils/clean');
 const path     = require('path');
 const fs       = require('fs');
 
 // POST /api/payment/pay — guest ou connecté
+const sellersOf = items => [...new Set((items||[]).map(i => String(i.sellerId||'')).filter(Boolean))];
+
 async function pay(req, res) {
   try {
     const { phone, provider, items, address, customerName } = req.body;
     if (!phone || !provider || !items?.length) return res.status(400).json({ error: 'phone, provider et items requis' });
+    if (!PHONE_RE.test(String(phone))) return res.status(400).json({ error: 'Numéro de téléphone invalide' });
     if (!['MTN_MOMO_CMR','ORANGE_CMR'].includes(provider)) return res.status(400).json({ error: 'provider invalide' });
 
     // Vérifier et réserver le stock atomiquement
@@ -52,19 +56,20 @@ async function pay(req, res) {
 
     const order = await Order.create({
       userId:      req.user?.id || null,
-      guestPhone:  req.user ? '' : phone,
+      guestPhone:  req.user ? '' : String(phone).trim(),
+      customerName: clean(customerName || '', 80),
       items:       orderItems,
       amount,
       finalAmount,
       commission,
-      address:     address || '',
+      address:     clean(address || '', 300),
       status:      'PENDING',
       externalId,
       provider,
     });
 
     // Log immuable
-    await TransactionLog.create({ orderId: order._id, externalId, amount, finalAmount, commission, status: 'PENDING', provider, ip: req.ip });
+    await TransactionLog.create({ sellerIds: sellersOf(order.items), orderId: order._id, externalId, amount, finalAmount, commission, status: 'PENDING', provider, ip: req.ip });
 
     // Appel KPay
     let kpayData;
@@ -80,7 +85,7 @@ async function pay(req, res) {
         await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.qty, reserved: -item.qty } });
       }
       await Order.findByIdAndUpdate(order._id, { status: 'REFUSÉ' });
-      await TransactionLog.create({ orderId: order._id, externalId, amount, finalAmount, commission, status: 'REFUSÉ', provider, ip: req.ip });
+      await TransactionLog.create({ sellerIds: sellersOf(order.items), orderId: order._id, externalId, amount, finalAmount, commission, status: 'REFUSÉ', provider, ip: req.ip });
       logger.error('KPay init failed:', e.message);
       return res.status(502).json({ error: 'Erreur initialisation paiement', detail: e.response?.data || e.message });
     }
@@ -125,7 +130,7 @@ async function applyResult(order, outcome, txId, raw, ip) {
   );
   if (!locked) return order.status;
 
-  await TransactionLog.create({ orderId: order._id, externalId: order.externalId, amount: order.amount, finalAmount: order.finalAmount, commission: order.commission, status: newStatus, provider: order.provider, ip });
+  await TransactionLog.create({ sellerIds: sellersOf(order.items), orderId: order._id, externalId: order.externalId, amount: order.amount, finalAmount: order.finalAmount, commission: order.commission, status: newStatus, provider: order.provider, ip });
 
   if (isSuccess) {
     for (const item of order.items) {
@@ -239,7 +244,8 @@ async function getInvoice(req, res) {
   try {
     const order = await Order.findById(req.params.id).lean();
     if (!order) return res.status(404).json({ error: 'Commande introuvable' });
-    if (req.user?.role !== 'admin' && String(order.userId) !== req.user?.id) return res.status(403).json({ error: 'Accès refusé' });
+    const isSeller = (order.items || []).some(i => String(i.sellerId) === String(req.user?.id));
+    if (req.user?.role !== 'admin' && String(order.userId) !== String(req.user?.id) && !isSeller) return res.status(403).json({ error: 'Accès refusé' });
     const filePath = path.join(__dirname, '../../invoices', `facture-${order.orderNumber}.pdf`);
     if (!fs.existsSync(filePath)) {
       const generated = await generateInvoice(order);

@@ -38,6 +38,8 @@ async function respondMessage(req, res) {
     if (!['ACCEPTED','REFUSED'].includes(status)) return res.status(400).json({ error: 'status doit être ACCEPTED ou REFUSED' });
     const msg = await Message.findById(id);
     if (!msg) return res.status(404).json({ error: 'Message introuvable' });
+    const prod = await Product.findById(msg.productId);
+    if (req.user.role !== 'admin' && (!prod || String(prod.sellerId) !== String(req.user.id))) return res.status(403).json({ error: 'Seul le vendeur de ce produit peut répondre' });
     msg.status = status;
     await msg.save();
     if (status === 'ACCEPTED' && msg.priceProposed > 0) {

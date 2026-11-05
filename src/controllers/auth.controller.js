@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const User   = require('../models/User');
 const logger = require('../utils/logger');
+const { clean, EMAIL_RE, PHONE_RE } = require('../utils/clean');
 
 function signTokens(user, sessionId) {
   const tv = user.tokenVersion;
@@ -23,8 +24,13 @@ function setRefreshCookie(res, token) {
 
 async function register(req, res) {
   try {
-    const { name, email, phone, password } = req.body;
+    const { password } = req.body;
+    const name  = clean(req.body.name, 100);
+    const email = String(req.body.email || '').trim();
+    const phone = String(req.body.phone || '').trim();
     if (!name || !email || !password) return res.status(400).json({ error: 'name, email et password requis' });
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Adresse e-mail invalide' });
+    if (phone && !PHONE_RE.test(phone)) return res.status(400).json({ error: 'Numéro de téléphone invalide' });
     if (!/^[A-Z]/.test(password)) return res.status(400).json({ error: 'Le mot de passe doit commencer par une majuscule' });
     if (password.length < 6) return res.status(400).json({ error: 'Mot de passe trop court (6 min)' });
     const exists = await User.findOne({ email: email.toLowerCase(), isDeleted: false });
@@ -46,6 +52,7 @@ async function login(req, res) {
     const em = email.toLowerCase().trim();
     const user = await User.findOne({ email: em, isDeleted: false }).select('+password');
     if (!user) { logger.warn(`LOGIN FAILED: ${em} ip=${req.ip}`); return res.status(401).json({ error: 'Identifiants incorrects' }); }
+    if (user.role === 'admin') { logger.warn(`LOGIN ADMIN PAR EMAIL REFUSÉ: ${em} ip=${req.ip}`); return res.status(401).json({ error: 'Identifiants incorrects' }); }
     if (user.isBanned) return res.status(403).json({ error: `Compte banni${user.banReason ? ': ' + user.banReason : ''}` });
     const ok = await user.comparePassword(password);
     if (!ok) { logger.warn(`LOGIN FAILED: ${em} ip=${req.ip}`); return res.status(401).json({ error: 'Identifiants incorrects' }); }
