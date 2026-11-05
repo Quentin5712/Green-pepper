@@ -23,8 +23,8 @@ if (!process.env.ADMIN_USER) process.env.ADMIN_USER = 'quentin';
 if (!process.env.KPAY_API_KEY) {
   console.warn('⚠️  KPAY_API_KEY manquant — le paiement KPay sera désactivé');
 }
-if (!process.env.ADMIN_PASS_HASH) {
-  console.warn('⚠️  ADMIN_PASS_HASH manquant — générez-le avec : node -e "require(\'bcryptjs\').hash(\'VotreMotDePasse\',12).then(console.log)"');
+if (!process.env.ADMIN_PASS_HASH && !process.env.ADMIN_PASSWORD) {
+  console.warn('⚠️  ADMIN_PASSWORD (ou ADMIN_PASS_HASH) manquant — la connexion admin sera REFUSÉE en production');
 }
 
 console.log('✅ Configuration validée');
