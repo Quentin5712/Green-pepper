@@ -23,6 +23,9 @@ function api(url, opts = {}) {
     ...opts,
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN, ...(opts.headers || {}) },
     credentials: 'include',
+  }).then(r => {
+    if (r.status === 401) { localStorage.removeItem('gp_token'); localStorage.removeItem('gp_user'); window.location.href = '/login.html'; }
+    return r;
   });
 }
 
@@ -320,7 +323,7 @@ async function loadOrders(status = ORDERS_STATUS) {
         <td style="font-size:12px">${o.provider==='MTN_MOMO_CMR'?'🟡 MTN':'🟠 Orange'}</td>
         <td><span class="pill ${statusColors[o.status]||'pill-offline'}">${o.status}</span></td>
         <td style="font-size:11px;color:#9ca3af">${fmtDate(o.createdAt)}</td>
-        <td><a href="/api/orders/${o._id}/invoice" target="_blank" style="color:#f97316;font-size:12px;font-weight:600">📄 PDF</a></td>
+        <td><button onclick="downloadFile('/api/orders/${o._id}/invoice','facture-${o.orderNumber||o._id}.pdf')" style="color:#f97316;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer">📄 PDF</button></td>
       </tr>`;
     }).join('');
   } catch(e) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444">Erreur</td></tr>'; }
@@ -384,7 +387,7 @@ async function submitImpersonate() {
     localStorage.setItem('gp_user_admin',  JSON.stringify(USER));
     // Appliquer token impersonate
     localStorage.setItem('gp_token', d.token);
-    localStorage.setItem('gp_user',  JSON.stringify({ name: d.merchantName, role:'merchant', isImpersonated:true }));
+    localStorage.setItem('gp_user',  JSON.stringify({ id: d.merchantId, name: d.merchantName, role:'merchant', isImpersonated:true }));
 
     closeImpersonateModal();
     toast('Connecté comme ' + d.merchantName);
@@ -408,6 +411,32 @@ async function doLogout() {
   try { await api('/auth/logout', { method:'POST' }); } catch(e) {}
   localStorage.removeItem('gp_token'); localStorage.removeItem('gp_user');
   window.location.href = '/login.html';
+}
+
+async function downloadFile(url, filename) {
+  try {
+    const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN }, credentials: 'include' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); toast(e.error || 'Téléchargement impossible', 'err'); return; }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch(e) { toast('Erreur réseau', 'err'); }
+}
+
+async function createMerchant() {
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const body = { name: val('mName'), email: val('mEmail'), phone: val('mPhone'), password: document.getElementById('mPassword')?.value || '', storeName: val('mStore'), days: Number(val('mDays')) || 0 };
+  if (!body.name || !body.email || !body.password || !body.storeName) { toast('Nom, boutique, e-mail et mot de passe requis', 'err'); return; }
+  try {
+    const r = await api('/admin/merchants', { method: 'POST', body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Erreur', 'err'); return; }
+    ['mName','mEmail','mPhone','mPassword','mStore','mDays'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    toast('Marchand créé ✅ — donnez-lui son e-mail et son mot de passe');
+    loadShops();
+  } catch(e) { toast('Erreur réseau', 'err'); }
 }
 
 // ── INIT ──

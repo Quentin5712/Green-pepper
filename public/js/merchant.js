@@ -7,7 +7,14 @@ let NOTIF_INTERVAL = null;
 let ORDER_STATUS   = '';
 
 function api(url, opts = {}) {
-  return fetch('/api' + url, { ...opts, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN, ...(opts.headers||{}) }, credentials:'include' });
+  return fetch('/api' + url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN, ...(opts.headers || {}) },
+    credentials: 'include',
+  }).then(r => {
+    if (r.status === 401) { localStorage.removeItem('gp_token'); localStorage.removeItem('gp_user'); window.location.href = '/login.html'; }
+    return r;
+  });
 }
 function toast(msg, type='ok') {
   const w=document.getElementById('toastWrap');if(!w)return;
@@ -74,7 +81,7 @@ async function loadProducts() {
   const tbody = document.getElementById('productsBody');
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr>';
   try {
-    const r = await api('/products?limit=200'); const d = await r.json();
+    const r = await api('/products?limit=200&sellerId='+encodeURIComponent(USER.id||'')); const d = await r.json();
     const prods = d.products || [];
     if (!prods.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Aucun produit. Ajoutez-en ci-dessus.</td></tr>'; return; }
     tbody.innerHTML = prods.map(p=>`<tr>
@@ -154,7 +161,7 @@ async function loadOrders(status=ORDER_STATUS) {
         <td style="font-size:11px;color:#9ca3af">${fmtDate(o.createdAt)}</td>
         <td>
           ${o.status==='VALIDÉ'?`<button onclick="markLivre('${o._id}')" style="padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f0fdf4;color:#16a34a;border:1px solid #86efac">📦 Livré</button>`:''}
-          <a href="/api/orders/${o._id}/invoice" target="_blank" style="margin-left:4px;color:#f97316;font-size:11px;font-weight:600">📄</a>
+          <button onclick="downloadFile('/api/orders/${o._id}/invoice','facture-${o.orderNumber||o._id}.pdf')" style="margin-left:4px;color:#f97316;font-size:11px;font-weight:600;background:none;border:none;cursor:pointer">📄</button>
         </td>
       </tr>`;
     }).join('');
@@ -177,7 +184,7 @@ async function loadStock() {
   const tbody = document.getElementById('stockBody');
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr>';
   try {
-    const r = await api('/products?limit=200'); const d = await r.json();
+    const r = await api('/products?limit=200&sellerId='+encodeURIComponent(USER.id||'')); const d = await r.json();
     const prods = d.products||[];
     if (!prods.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Aucun produit.</td></tr>'; return; }
     tbody.innerHTML = prods.map(p=>{
@@ -237,6 +244,18 @@ async function markAllRead() {
     const cnt=document.getElementById('notifCount'); if(cnt) cnt.style.display='none';
     toast('Notifications lues'); loadNotifications();
   } catch(e) { toast('Erreur','err'); }
+}
+
+async function downloadFile(url, filename) {
+  try {
+    const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN }, credentials: 'include' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); toast(e.error || 'Téléchargement impossible', 'err'); return; }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch(e) { toast('Erreur réseau', 'err'); }
 }
 
 async function doLogout() {

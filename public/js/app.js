@@ -41,25 +41,37 @@ function authHeaders() {
 
 // ── UI AUTH ──
 function updateAuthUI() {
-  const authBtn  = $('authBtn');
-  const avatarBtn= $('avatarBtn');
-  const userMenu = $('userMenuLinks');
-  if (!authBtn||!avatarBtn) return;
-
+  const authBtn = $('authBtn'), avatarBtn = $('avatarBtn');
+  if (!authBtn || !avatarBtn) return;
   if (USER && TOKEN) {
-    authBtn.style.display   = 'none';
+    authBtn.style.display = 'none';
     avatarBtn.style.display = 'flex';
-    avatarBtn.textContent   = (USER.name||'U')[0].toUpperCase();
-    if (userMenu) {
-      const adminLink = userMenu.querySelector('.admin-link');
-      const merchLink = userMenu.querySelector('.merch-link');
-      if (adminLink) adminLink.style.display = USER.role==='admin'   ? 'block' : 'none';
-      if (merchLink) merchLink.style.display = USER.role==='merchant' ? 'block' : 'none';
+    avatarBtn.textContent = ((USER.name || 'U').trim().charAt(0) || 'U').toUpperCase();
+    const nm = $('umName'); if (nm) nm.textContent = USER.name || '';
+    const sp = $('umSpace');
+    if (sp) {
+      if (USER.role === 'admin')         { sp.href = '/admin.html';    sp.textContent = 'Espace administrateur'; sp.style.display = 'block'; }
+      else if (USER.role === 'merchant') { sp.href = '/merchant.html'; sp.textContent = 'Ma boutique';           sp.style.display = 'block'; }
+      else sp.style.display = 'none';
     }
   } else {
-    authBtn.style.display   = 'flex';
+    authBtn.style.display = 'inline-flex';
     avatarBtn.style.display = 'none';
+    const m = $('userMenu'); if (m) m.style.display = 'none';
   }
+}
+
+function toggleUserMenu() {
+  const m = $('userMenu');
+  if (m) m.style.display = m.style.display === 'block' ? 'none' : 'block';
+}
+
+async function doLogout() {
+  try { await fetch('/api/auth/logout', { method: 'POST', headers: authHeaders(), credentials: 'include' }); } catch(e) {}
+  localStorage.removeItem('gp_token'); localStorage.removeItem('gp_user');
+  TOKEN = null; USER = null;
+  updateAuthUI();
+  toast('Vous êtes déconnecté');
 }
 
 // ── PANIER ──
@@ -334,6 +346,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   // Fermer le panier sur ESC
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCart();closeCheckout();}});
+  document.addEventListener('click',e=>{
+    const m=$('userMenu');
+    if(m&&m.style.display==='block'&&!e.target.closest('#userMenu')&&!e.target.closest('#avatarBtn')) m.style.display='none';
+  });
 
   // Recherche sur Enter
   $('searchInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
