@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 // Ledger immuable — pas de update/delete
 const TxSchema = new mongoose.Schema({
   shopId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Shop' },
+  sellerIds:   [{ type: String, index: true }],
   orderId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
   externalId:  { type: String },
   amount:      { type: Number, required: true },

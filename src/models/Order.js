@@ -9,6 +9,7 @@ const OrderSchema = new mongoose.Schema({
   orderNumber:   { type: String, default: genOrderNumber, unique: true },
   userId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   guestPhone:    { type: String, default: '' },
+  customerName:  { type: String, default: '' },
   shopId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Shop' },
   items: [{
     productId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
