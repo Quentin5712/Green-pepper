@@ -24,11 +24,11 @@
   <main style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px">
     <div class="auth-card">
       <h1 style="font-family:'Playfair Display',serif;font-size:26px;margin-bottom:6px;color:#111">Connexion</h1>
-      <p style="font-size:13px;color:#6b7280;margin-bottom:28px">Accédez à votre compte Green Pepper</p>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:28px">Administrateur, commerçant ou client : connectez-vous ici</p>
 
       <div style="margin-bottom:16px">
-        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px">Adresse e-mail</label>
-        <input id="email" type="email" required autocomplete="email" class="auth-input" placeholder="votre@email.com">
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px">E-mail ou identifiant admin</label>
+        <input id="email" type="text" required autocomplete="username" autocapitalize="none" class="auth-input" placeholder="votre@email.com">
       </div>
       <div style="margin-bottom:24px">
         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px">Mot de passe</label>
@@ -56,11 +56,11 @@
       btn.disabled = true; btn.textContent = 'Connexion…';
 
       try {
-        const r = await fetch('/api/auth/login', {
+        const r = await fetch(email.includes('@') ? '/api/auth/login' : '/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify(email.includes('@') ? { email, password } : { username: email, password }),
         });
         const data = await r.json();
 

@@ -23,7 +23,8 @@
         🛒 Panier
         <span id="cartCount" class="gp-cart-badge" style="display:none">0</span>
       </button>
-      <a href="/admin.html" class="gp-admin-link">Admin</a>
+      <a href="/login.html" id="authBtn" style="display:inline-flex">Connexion</a>
+      <button id="avatarBtn" onclick="toggleUserMenu()" title="Mon compte"></button>
     </div>
   </div>
   <div class="gp-cats-bar" id="catsBar">
@@ -35,6 +36,12 @@
     <button onclick="filterCat('Céréales')"  class="gp-cat-btn" data-cat="Céréales">Céréales</button>
   </div>
 </header>
+
+<div id="userMenu" style="display:none;position:fixed;top:66px;right:12px;background:#fff;color:#111827;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;min-width:200px;z-index:150">
+  <div id="umName" style="padding:8px 12px;font-size:12px;font-weight:700;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:4px"></div>
+  <a id="umSpace" href="#" style="display:none;padding:10px 12px;font-size:13px;font-weight:600;color:#16a34a;border-radius:8px">Mon espace</a>
+  <button onclick="doLogout()" style="display:block;width:100%;text-align:left;padding:10px 12px;font-size:13px;color:#ef4444;background:none;border:none;cursor:pointer;border-radius:8px">Déconnexion</button>
+</div>
 
 <section class="gp-hero">
   <div class="gp-hero-content">

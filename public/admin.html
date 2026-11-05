@@ -94,7 +94,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:10px">
         <button onclick="switchTab('online')" class="f-btn">Voir les connectés</button>
         <button onclick="fetch('/api/products/seed').then(r=>r.json()).then(d=>{alert(d.message);loadStats()})" class="f-btn" style="background:#16a34a">Seed produits</button>
-        <a href="/api/admin/journal" style="padding:10px 20px;background:#374151;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">⬇ Journal CSV</a>
+        <button onclick="downloadFile('/api/admin/journal','journal_global.csv')" style="padding:10px 20px;background:#374151;color:#fff;border-radius:8px;font-size:13px;font-weight:700;border:none;cursor:pointer">⬇ Journal CSV</button>
       </div>
     </div>
   </div>
@@ -136,6 +136,18 @@
 
   <!-- BOUTIQUES -->
   <div id="tab-shops" style="display:none">
+    <div class="form-card">
+      <p style="font-size:14px;font-weight:700;margin-bottom:14px">➕ Créer un marchand et sa boutique</p>
+      <div class="form-grid">
+        <div class="f-group"><label>Nom du marchand</label><input id="mName" class="f-inp" autocomplete="off"></div>
+        <div class="f-group"><label>Nom de la boutique</label><input id="mStore" class="f-inp" autocomplete="off"></div>
+        <div class="f-group"><label>E-mail (identifiant de connexion)</label><input id="mEmail" type="email" class="f-inp" autocomplete="off"></div>
+        <div class="f-group"><label>Téléphone</label><input id="mPhone" type="tel" class="f-inp" autocomplete="off"></div>
+        <div class="f-group"><label>Mot de passe (majuscule au début)</label><input id="mPassword" type="text" class="f-inp" autocomplete="off"></div>
+        <div class="f-group"><label>Durée du compte en jours (vide = illimité)</label><input id="mDays" type="number" min="1" class="f-inp"></div>
+      </div>
+      <button onclick="createMerchant()" class="f-btn" style="margin-top:14px">Créer le marchand</button>
+    </div>
     <div class="tbl-wrap" style="overflow-x:auto">
       <table>
         <thead><tr><th>Boutique</th><th>Propriétaire</th><th>Catégorie</th><th>KYC</th><th>Statut</th><th>Actions</th></tr></thead>
