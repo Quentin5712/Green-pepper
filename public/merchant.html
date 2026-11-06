@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/extra.css" rel="stylesheet">
   <style>
     body{background:#f3f4f6;font-family:'Inter',sans-serif}
     #impersonateBanner{background:#dc2626;color:#fff;text-align:center;padding:10px 20px;font-size:14px;font-weight:600;display:none}
@@ -87,9 +88,19 @@
         <div class="f-group"><label>Nom *</label><input id="pName" class="f-inp" placeholder="Ex: Jus de Gingembre"></div>
         <div class="f-group"><label>Prix (FCFA) *</label><input id="pPrice" type="number" class="f-inp" placeholder="1500"></div>
         <div class="f-group"><label>Stock *</label><input id="pStock" type="number" class="f-inp" placeholder="50"></div>
-        <div class="f-group"><label>Catégorie</label><input id="pCat" class="f-inp" placeholder="Boissons"></div>
+        <div class="f-group"><label>Catégorie</label><input id="pCat" class="f-inp" list="catList" placeholder="Choisir ou écrire (ex : Boissons)" autocomplete="off"><datalist id="catList"></datalist></div>
         <div class="f-group"><label>Unité</label><input id="pUnit" class="f-inp" placeholder="bouteille 33cl"></div>
-        <div class="f-group"><label>Image URL</label><input id="pImg" class="f-inp" placeholder="https://…"></div>
+        <div class="f-group" style="grid-column:1/-1">
+          <label>Photo du produit</label>
+          <div class="up-box">
+            <img id="pImgPreview" class="up-prev" alt="" style="display:none">
+            <label for="pImgFile" class="up-btn">📷 Prendre ou choisir une photo</label>
+            <input id="pImgFile" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="onPickImage(this)">
+            <button type="button" id="pImgClear" class="up-clear" style="display:none" onclick="clearImage()">Retirer</button>
+          </div>
+          <span id="pImgStatus" class="up-status"></span>
+          <input id="pImg" class="f-inp" oninput="setImgPreview(this.value)" placeholder="…ou collez le lien d'une photo déjà en ligne" autocomplete="off" style="margin-top:8px">
+        </div>
         <div class="f-group" style="grid-column:1/-1"><label>Description</label><textarea id="pDesc" class="f-inp" style="resize:none;height:56px" placeholder="Ingrédients, origine…"></textarea></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
@@ -147,6 +158,7 @@
 </main>
 
 <div id="toastWrap" class="gp-toast-wrap"></div>
+<script src="/js/shared.js"></script>
 <script src="/js/merchant.js"></script>
 </body>
 </html>

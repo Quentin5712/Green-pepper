@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/extra.css" rel="stylesheet">
 </head>
 <body>
 
@@ -28,12 +29,7 @@
     </div>
   </div>
   <div class="gp-cats-bar" id="catsBar">
-    <button onclick="filterCat('')"          class="gp-cat-btn active" data-cat="">Tout</button>
-    <button onclick="filterCat('Boissons')"  class="gp-cat-btn" data-cat="Boissons">Boissons</button>
-    <button onclick="filterCat('Épices')"    class="gp-cat-btn" data-cat="Épices">Épices</button>
-    <button onclick="filterCat('Fruits')"    class="gp-cat-btn" data-cat="Fruits">Fruits</button>
-    <button onclick="filterCat('Légumes')"   class="gp-cat-btn" data-cat="Légumes">Légumes</button>
-    <button onclick="filterCat('Céréales')"  class="gp-cat-btn" data-cat="Céréales">Céréales</button>
+    <button onclick="showCategories()" class="gp-cat-btn active">Tout</button>
   </div>
 </header>
 
@@ -57,7 +53,9 @@
     <h2 class="gp-section-title" id="productsTitle">Nos produits</h2>
     <span id="productsCount" class="gp-section-count"></span>
   </div>
-  <div id="productsGrid" class="gp-products-grid"></div>
+  <div id="backRow" style="display:none;margin-bottom:14px"><button onclick="showCategories()" class="gp-back-btn">← Toutes les catégories</button></div>
+  <div id="catsGrid" class="gp-cat-cards"></div>
+  <div id="productsGrid" class="gp-products-grid" style="display:none"></div>
   <div id="productsLoader" class="gp-loader">Chargement des produits…</div>
   <div id="productsEmpty" class="gp-empty" style="display:none">Aucun produit trouvé.</div>
 </main>
