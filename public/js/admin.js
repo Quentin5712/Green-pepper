@@ -210,13 +210,13 @@ async function loadProducts() {
     const r = await api('/products?limit=200'); const d = await r.json();
     const prods = d.products || [];
     if (!prods.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">Aucun produit. Cliquez "Seed".</td></tr>'; return; }
-    tbody.innerHTML = prods.map(p => {
+    const rowHtml = p => {
       const hasDisc = p.discount > 0 && p.discountExpiresAt && new Date(p.discountExpiresAt) > new Date();
       const fp      = hasDisc ? Math.round(p.price * (1 - p.discount/100)) : p.price;
       return `<tr>
-        <td><img src="${p.imageUrl||'https://via.placeholder.com/36'}" style="width:36px;height:36px;border-radius:8px;object-fit:cover" onerror="this.src='https://via.placeholder.com/36'" loading="lazy"></td>
-        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</td>
-        <td><span style="background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700">${p.category||'—'}</span></td>
+        <td><img src="${esc(p.imageUrl||PLACEHOLDER)}" style="width:36px;height:36px;border-radius:8px;object-fit:cover" onerror="this.onerror=null;this.src=PLACEHOLDER" loading="lazy"></td>
+        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</td>
+        <td><span style="background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700">${esc(p.category||'—')}</span></td>
         <td style="font-weight:700">${p.price.toLocaleString('fr-FR')} FCFA${hasDisc?`<br><span style="color:#f97316;font-size:11px">→ ${fp.toLocaleString('fr-FR')} (-${p.discount}%)</span>`:''}</td>
         <td style="font-weight:700;color:${p.stock<=0?'#ef4444':p.stock<=5?'#f59e0b':'#16a34a'}">${p.stock}</td>
         <td>${hasDisc?`<span class="pill" style="background:#fff7ed;color:#c2410c">${p.discount}% jusqu'au ${new Date(p.discountExpiresAt).toLocaleDateString('fr-FR')}</span>`:'—'}</td>
@@ -226,7 +226,9 @@ async function loadProducts() {
           <button onclick="delProduct('${p._id}')" class="action-btn btn-del">✕</button>
         </td>
       </tr>`;
-    }).join('');
+    };
+    renderGrouped(tbody, prods, rowHtml, 7);
+    fillCatList();
   } catch(e) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef4444">Erreur</td></tr>'; }
 }
 
@@ -240,6 +242,7 @@ async function editProduct(id) {
     document.getElementById('pCat').value    = p.category||'';
     document.getElementById('pUnit').value   = p.unit||'';
     document.getElementById('pImg').value    = p.imageUrl||'';
+    setImgPreview(p.imageUrl||'');
     document.getElementById('pDesc').value   = p.description||'';
     document.querySelector('.form-card p').textContent = '✏️ Modifier le produit';
     window.scrollTo({ top:0, behavior:'smooth' });
@@ -248,6 +251,7 @@ async function editProduct(id) {
 
 function resetProductForm() {
   ['pEditId','pName','pPrice','pStock','pCat','pUnit','pImg','pDesc'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  clearImage();
   document.querySelector('.form-card p').textContent = '➕ Nouveau produit';
 }
 
