@@ -16,6 +16,8 @@ const merchantCtrl= require('../controllers/merchant.controller');
 const notifCtrl   = require('../controllers/notification.controller');
 const shopCtrl    = require('../controllers/shop.controller');
 
+const imageCtrl = require('../controllers/image.controller');
+
 // ── AUTH ──
 router.post('/auth/register', limits.auth, authCtrl.register);
 router.post('/auth/login',    limits.auth, authCtrl.login);
@@ -109,9 +111,8 @@ router.get('/admin/settings',                   verifyAdmin, adminCtrl.getSettin
 router.put('/admin/settings',                   verifyAdmin, adminCtrl.updateSettings);
 
 // ── UPLOAD ──
-router.post('/upload', verifyToken, upload, (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu' });
-  res.json({ url: `/uploads/${req.file.filename}` });
-});
+router.post('/upload',     limits.upload, verifyMerchant, upload, imageCtrl.create);
+router.get ('/images/:id', imageCtrl.get);
+router.get ('/categories', productCtrl.getCategories);
 
 module.exports = router;
