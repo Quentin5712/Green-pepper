@@ -39,8 +39,8 @@ app.use(helmet({
       styleSrc:   ["'self'", "https://cdn.tailwindcss.com", "https://fonts.googleapis.com", "'unsafe-inline'"],
       fontSrc:    ["'self'", "https://fonts.gstatic.com"],
       imgSrc:     ["'self'", "data:", "blob:", "https:"],
-      connectSrc: ["'self'", "https://admin.kpay.site", "https://proxy.momoapi.mtn.com", "https://api.orange.com"],
-      scriptSrcAttr: ["'unsafe-inline'"],   // autorise les onclick= du site (sinon AUCUN bouton ne répond)
+      connectSrc: ["'self'", "https://kpay.site", "https://admin.kpay.site", "https://api.kpay.site", "https://proxy.momoapi.mtn.com", "https://api.orange.com"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       frameSrc:   ["'none'"],
       objectSrc:  ["'none'"],
     },
@@ -54,8 +54,6 @@ app.use(helmet({
 app.use((req,res,next) => { res.setHeader('Permissions-Policy','camera=(),microphone=(),geolocation=()'); next(); });
 
 // ── CORS ──
-// Le site s'appelle lui-même (même origine) : toujours autorisé, quel que soit le domaine Render.
-// Les autres origines doivent figurer dans ALLOWED_ORIGINS. Sinon : pas d'en-têtes CORS (le navigateur bloque), jamais d'erreur 500.
 app.use(cors((req, cb) => {
   const origin = req.header('Origin');
   const selfOrigin = `${req.protocol}://${req.get('host')}`;
@@ -91,9 +89,66 @@ app.get('/health', (req, res) => {
   res.json({ status:'ok', db:mongoose.connection.readyState===1?'connected':'disconnected', uptime:Math.floor(process.uptime()), memory:Math.round(process.memoryUsage().rss/1024/1024)+'MB', ts:new Date().toISOString() });
 });
 
+// ── KPAY - NE PAS EFFACER ──
+
+// 1. Fichier de vérification du domaine
+app.get('/.well-known/kpay-verification.txt', (req, res) => {
+  res.type('text/plain').send('6a71101356ed2153f85a2eed3a1f5223');
+});
+
+// 2. Webhook KPay - KPay appelle cette adresse quand quelqu'un paie
+// URL à mettre dans KPay : https://investpro-fxar.onrender.com/api/kpay/webhook
+app.post('/api/kpay/webhook', (req, res) => {
+  try {
+    console.log('📩 Webhook KPay reçu :', JSON.stringify(req.body));
+    const event = req.body;
+    if (event.status === 'SUCCESS' || event.data?.status === 'SUCCESS') {
+      console.log('✅ Paiement réussi pour :', event.reference || event.data?.reference);
+      // TODO: ici tu mets à jour ta commande en base comme "payée"
+    }
+    // Toujours répondre 200, sinon KPay renvoie le webhook 10 fois
+    res.status(200).json({ received: true });
+  } catch (e) {
+    console.error('Erreur webhook KPay:', e.message);
+    res.status(200).json({ received: true });
+  }
+});
+
+// 3. Créer un paiement - ton bouton "Payer" appelle cette adresse
+app.post('/api/kpay/pay', async (req, res) => {
+  try {
+    const { amount, phone, reference, description } = req.body;
+    if (!amount || !phone) {
+      return res.status(400).json({ error: 'Montant et numéro de téléphone requis' });
+    }
+    const response = await fetch('https://api.kpay.site/api/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.KPAY_API_KEY}`,
+      },
+      body: JSON.stringify({
+        amount: Number(amount),
+        phone: phone,
+        reference: reference || 'INV-' + Date.now(),
+        description: description || 'Paiement InvestPro',
+        callback_url: 'https://investpro-fxar.onrender.com/api/kpay/webhook',
+        return_url: 'https://investpro-fxar.onrender.com/success',
+      }),
+    });
+    const data = await response.json();
+    console.log('KPay réponse:', data);
+    res.status(response.status).json(data);
+  } catch (e) {
+    console.error('Erreur KPay pay:', e.message);
+    res.status(500).json({ error: 'Erreur lors de la création du paiement' });
+  }
+});
+
 // ── Fichiers statiques ──
 app.use('/uploads', express.static(path.join(__dirname,'public','uploads'), { setHeaders:(res)=>res.setHeader('Cache-Control','public,max-age=86400') }));
 app.use(express.static(path.join(__dirname,'public'), {
+  dotfiles: 'allow',
   setHeaders:(res,fp) => {
     if(fp.endsWith('.html')) { res.setHeader('Cache-Control','no-cache,no-store,must-revalidate'); res.setHeader('Content-Type','text/html;charset=UTF-8'); }
   }
