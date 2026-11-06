@@ -2,6 +2,9 @@
 const Product = require('../models/Product');
 const { clean, safeUrl } = require('../utils/clean');
 const san = s => typeof s==='string' ? clean(s, 2000) : s;
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// « boissons », « Boissons  » et « BOISSONS » deviennent la même catégorie
+const normCat = s => { const c = clean(String(s || ''), 50).replace(/\s+/g, ' '); return c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Divers'; };
 
 // Un marchand ne modifie que SES produits ; l'admin modifie tout
 async function ownProduct(req, res) {
@@ -17,7 +20,7 @@ async function getAll(req, res) {
   try {
     const { q, category, minPrice, maxPrice, shopId, sellerId, page=1, limit=48 } = req.query;
     const filter = { isActive:true, isDeleted:false };
-    if (category) filter.category = new RegExp(san(category),'i');
+    if (category) filter.category = new RegExp('^' + escRe(san(category)) + '$', 'i');
     if (shopId)   filter.shopId   = shopId;
     if (sellerId) filter.sellerId = san(String(sellerId));
     if (q)        filter.$text    = { $search: san(q) };
@@ -42,7 +45,7 @@ async function create(req, res) {
   try {
     const { name, price, stock, category, description, imageUrl, unit, shopId } = req.body;
     if (!name || !price || !req.user?.id) return res.status(400).json({ error:'name, price requis' });
-    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:san(category||'Divers'), description:san(description||''), imageUrl:safeUrl(imageUrl), unit:san(unit||'unité'), sellerId:req.user.id, shopId:req.user.shopId||null });
+    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:normCat(category), description:san(description||''), imageUrl:safeUrl(imageUrl), unit:san(unit||'unité'), sellerId:req.user.id, shopId:req.user.shopId||null });
     res.status(201).json(p);
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
@@ -55,7 +58,7 @@ async function update(req, res) {
     allowed.forEach(k => { if(req.body[k]!==undefined) upd[k]=req.body[k]; });
     if(upd.name)        upd.name        = san(upd.name);
     if(upd.description) upd.description = san(upd.description);
-    if(upd.category) upd.category = san(upd.category);
+    if(upd.category) upd.category = normCat(upd.category);
     if(upd.unit) upd.unit = san(upd.unit);
     if(upd.imageUrl !== undefined) upd.imageUrl = safeUrl(upd.imageUrl);
     if(upd.price)       upd.price       = Number(upd.price);
@@ -101,4 +104,23 @@ async function seed(req, res) {
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
 
-module.exports = { getAll, getOne, create, update, remove, addStock, seed };
+// GET /api/categories : chaque catégorie avec son nombre de produits et jusqu'à 4 photos
+async function getCategories(req, res) {
+  try {
+    const categories = await Product.aggregate([
+      { $match: { isActive: true, isDeleted: false } },
+      { $sort: { createdAt: -1 } },
+      { $group: {
+          _id: { $toLower: { $ifNull: ['$category', 'Divers'] } },
+          name: { $first: { $ifNull: ['$category', 'Divers'] } },
+          count: { $sum: 1 },
+          images: { $push: '$imageUrl' } } },
+      { $project: { _id: 0, name: 1, count: 1,
+          images: { $slice: [ { $filter: { input: '$images', as: 'i', cond: { $and: [ { $ne: ['$$i', null] }, { $ne: ['$$i', ''] } ] } } }, 4 ] } } },
+      { $sort: { name: 1 } },
+    ]);
+    res.json({ categories });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+}
+
+module.exports = { getAll, getOne, create, update, remove, addStock, seed, getCategories };
