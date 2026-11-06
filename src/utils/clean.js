@@ -14,6 +14,7 @@ const EMAIL_RE = /^[^\s@<>"'`]+@[^\s@<>"'`]+\.[^\s@<>"'`]+$/;
 const PHONE_RE = /^[0-9+\s.\-]{8,15}$/;
 function safeUrl(u) {
   const s = String(u || '').trim();
+  if (/^\/api\/images\/[a-f0-9]{24}$/.test(s)) return s;
   return /^(https?:\/\/|\/uploads\/)[^\s<>"'`]*$/.test(s) ? s.slice(0, 500) : '';
 }
 module.exports = { clean, EMAIL_RE, PHONE_RE, safeUrl };
