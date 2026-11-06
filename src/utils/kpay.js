@@ -20,13 +20,17 @@ async function initPayment({ amount, provider, phoneNumber, externalId, descript
   logger.info(`KPay init: ${provider} ${payload.phoneNumber} ${payload.amount} XAF ${externalId}`);
   try {
     const r = await axios.post(`${BASE_URL}/api/v1/payments/init`, payload, {
-      headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+      headers: {
+        'x-api-key': API_KEY,
+        'x-secret-key': G_SECRET,
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json'
+      },
       timeout: 10000,
     });
     logger.info(`KPay response: ${JSON.stringify(r.data)}`);
     return r.data;
   } catch (err) {
-    // SEUL CHANGEMENT : on affiche la vraie réponse de KPay
     logger.error(`KPay init failed: status=${err.response?.status} data=${JSON.stringify(err.response?.data)} message=${err.message}`);
     throw err;
   }
@@ -36,7 +40,12 @@ async function getStatus(externalId) {
   if (!API_KEY) throw new Error('KPAY_API_KEY manquant');
   try {
     const r = await axios.get(`${BASE_URL}/api/v1/payments/${externalId}`, {
-      headers: { 'x-api-key': API_KEY }, timeout: 10000,
+      headers: {
+        'x-api-key': API_KEY,
+        'x-secret-key': G_SECRET,
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      timeout: 10000,
     });
     return r.data;
   } catch (err) {
