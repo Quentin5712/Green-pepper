@@ -64,6 +64,7 @@
 
 <header class="adm-header">
   <span style="font-family:'Playfair Display',serif;font-size:18px">🌶️ Green Pepper — Admin</span>
+  <span id="modeBadge" class="mode-badge" style="display:none"></span>
   <nav class="adm-nav">
     <a onclick="switchTab('dashboard')">Dashboard</a>
     <a onclick="switchTab('online')">Connectés <span id="onlineBadge" style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:100px;font-size:10px">0</span></a>
@@ -71,6 +72,7 @@
     <a onclick="switchTab('shops')">Boutiques</a>
     <a onclick="switchTab('products')">Produits</a>
     <a onclick="switchTab('orders')">Commandes</a>
+    <a onclick="switchTab('payment')">Paiement</a>
     <a onclick="switchTab('audit')">Audit</a>
     <a href="/" style="margin-left:20px">← Site</a>
     <a onclick="doLogout()" style="color:#f97316">Déconnexion</a>
@@ -143,9 +145,11 @@
         <div class="f-group"><label>Nom du marchand</label><input id="mName" class="f-inp" autocomplete="off"></div>
         <div class="f-group"><label>Nom de la boutique</label><input id="mStore" class="f-inp" autocomplete="off"></div>
         <div class="f-group"><label>E-mail (identifiant de connexion)</label><input id="mEmail" type="email" class="f-inp" autocomplete="off"></div>
-        <div class="f-group"><label>Téléphone</label><input id="mPhone" type="tel" class="f-inp" autocomplete="off"></div>
+        <div class="f-group"><label>Téléphone Mobile Money (versement des ventes)</label><input id="mPhone" type="tel" class="f-inp" autocomplete="off"></div>
         <div class="f-group"><label>Mot de passe (majuscule au début)</label><input id="mPassword" type="text" class="f-inp" autocomplete="off"></div>
         <div class="f-group"><label>Durée du compte en jours (vide = illimité)</label><input id="mDays" type="number" min="1" class="f-inp"></div>
+        <div class="f-group"><label>WhatsApp (237XXXXXXXXX, affiché sur ses produits)</label><input id="mWhatsapp" class="f-inp" autocomplete="off" inputmode="numeric"></div>
+        <div class="f-group"><label>Opérateur de versement</label><select id="mProvider" class="f-inp"><option value="">Détecter automatiquement</option><option value="MTN_MOMO_CMR">MTN MoMo</option><option value="ORANGE_CMR">Orange Money</option></select></div>
       </div>
       <button onclick="createMerchant()" class="f-btn" style="margin-top:14px">Créer le marchand</button>
     </div>
@@ -167,6 +171,8 @@
         <div class="f-group"><label>Stock</label><input id="pStock" type="number" class="f-inp" placeholder="100"></div>
         <div class="f-group"><label>Catégorie</label><input id="pCat" class="f-inp" list="catList" placeholder="Choisir ou écrire (ex : Boissons)" autocomplete="off"><datalist id="catList"></datalist></div>
         <div class="f-group"><label>Unité</label><input id="pUnit" class="f-inp" placeholder="bouteille 50cl"></div>
+        <div class="f-group"><label>Type de produit</label><select id="pType" class="f-inp" onchange="onTypeChange()"><option value="physical">📦 Physique (livraison)</option><option value="digital">⚡ Digital (téléchargement)</option></select></div>
+        <div class="f-group" id="pDigitalBox" style="display:none"><label>Lien de téléchargement (https://…)</label><input id="pDigital" class="f-inp" placeholder="laisser vide pour garder le lien actuel" autocomplete="off"></div>
         <div class="f-group" style="grid-column:1/-1">
           <label>Photo du produit</label>
           <div class="up-box">
@@ -208,6 +214,47 @@
       <table>
         <thead><tr><th>N°</th><th>Client</th><th>Produits</th><th>Total</th><th>Opérateur</th><th>Statut</th><th>Date</th><th>Facture</th></tr></thead>
         <tbody id="ordersTable"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAIEMENT : numéro de réception + versements -->
+  <div id="tab-payment" style="display:none">
+    <div class="form-card" style="text-align:center">
+      <span id="payModeBadge" class="mode-badge" style="display:none"></span>
+      <p style="font-size:13px;color:#6b7280;margin-top:12px">Argent reçu sur :</p>
+      <p id="payBigPhone" style="font-size:32px;font-weight:900;color:#111827;letter-spacing:.03em;margin:4px 0">—</p>
+      <p id="paySource" style="font-size:12px;color:#9ca3af"></p>
+      <p id="payConfigErr" style="display:none;font-size:12px;color:#dc2626;margin-top:8px"></p>
+    </div>
+    <div class="form-card">
+      <p style="font-size:14px;font-weight:700;margin-bottom:6px">Mon numéro de réception</p>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Format : 237 + 9 chiffres, sans « + » ni espace. Le changement est enregistré tout de suite, sans redéployer.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="newAdminPhone" class="f-inp" style="flex:1;min-width:200px;font-size:16px" placeholder="237XXXXXXXXX" inputmode="numeric" maxlength="16" autocomplete="off">
+        <button onclick="saveAdminPhone()" class="f-btn">Enregistrer</button>
+      </div>
+      <p id="payFormMsg" style="font-size:13px;margin-top:10px;min-height:18px"></p>
+      <p id="payLastChange" style="font-size:12px;color:#6b7280;margin-top:4px"></p>
+      <div id="payHistory" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      <p style="font-size:11px;color:#9ca3af;margin-top:12px">Ce numéro est transmis à KPay avec chaque paiement et enregistré sur chaque commande. Si votre compte KPay reverse les fonds sur un numéro fixe, vérifiez aussi ce réglage dans le tableau de bord KPay.</p>
+    </div>
+    <div class="form-card">
+      <p style="font-size:14px;font-weight:700;margin-bottom:10px">Connexion KPay</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;font-size:13px">
+        <div>Mode : <b id="kMode">—</b></div><div>Adresse : <b id="kBase" style="word-break:break-all">—</b></div>
+        <div>Clé API : <b id="kKey">—</b></div><div>Commission plateforme : <b id="kRate">—</b></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button onclick="loadKpayBalance()" class="f-btn" style="background:#374151">Voir le solde KPay</button>
+        <span id="kBalance" style="font-size:14px;font-weight:700"></span>
+      </div>
+    </div>
+    <p style="font-size:14px;font-weight:700;margin:18px 0 10px">Versements aux vendeurs</p>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Commande</th><th>Vendeur</th><th>Type</th><th>Part vendeur</th><th>Commission</th><th>Livraison</th><th>Versement</th><th>Actions</th></tr></thead>
+        <tbody id="payoutsTable"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
       </table>
     </div>
   </div>

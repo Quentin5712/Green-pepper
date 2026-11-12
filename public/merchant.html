@@ -78,6 +78,7 @@
     <button id="tab-orders"   onclick="switchTab('orders')"   class="tab-btn">Commandes</button>
     <button id="tab-stock"    onclick="switchTab('stock')"    class="tab-btn">Stocks</button>
     <button id="tab-notifications" onclick="switchTab('notifications')" class="tab-btn">Notifications</button>
+    <button id="tab-wallet" onclick="switchTab('wallet')" class="tab-btn">Portefeuille</button>
   </div>
 
   <!-- PRODUITS -->
@@ -90,6 +91,8 @@
         <div class="f-group"><label>Stock *</label><input id="pStock" type="number" class="f-inp" placeholder="50"></div>
         <div class="f-group"><label>Catégorie</label><input id="pCat" class="f-inp" list="catList" placeholder="Choisir ou écrire (ex : Boissons)" autocomplete="off"><datalist id="catList"></datalist></div>
         <div class="f-group"><label>Unité</label><input id="pUnit" class="f-inp" placeholder="bouteille 33cl"></div>
+        <div class="f-group"><label>Type de produit</label><select id="pType" class="f-inp" onchange="onTypeChange()"><option value="physical">📦 Physique (livraison)</option><option value="digital">⚡ Digital (téléchargement)</option></select></div>
+        <div class="f-group" id="pDigitalBox" style="display:none"><label>Lien de téléchargement (https://…)</label><input id="pDigital" class="f-inp" placeholder="laisser vide pour garder le lien actuel" autocomplete="off"></div>
         <div class="f-group" style="grid-column:1/-1">
           <label>Photo du produit</label>
           <div class="up-box">
@@ -145,6 +148,30 @@
   </div>
 
   <!-- NOTIFICATIONS -->
+  <div id="panel-wallet" style="display:none">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+      <div class="stat-card"><div class="stat-val" id="wBlocked" style="color:#f59e0b">—</div><div class="stat-lbl">Solde bloqué<br>(attend la validation du client)</div></div>
+      <div class="stat-card"><div class="stat-val" id="wAvail" style="color:#2563eb">—</div><div class="stat-lbl">Solde disponible<br>(versement en cours)</div></div>
+      <div class="stat-card"><div class="stat-val" id="wPaid" style="color:#16a34a">—</div><div class="stat-lbl">Total déjà versé</div></div>
+    </div>
+    <p id="wInfo" style="font-size:12px;color:#6b7280;margin-bottom:16px"></p>
+    <div class="form-card">
+      <p style="font-size:14px;font-weight:700;margin-bottom:10px">Mon WhatsApp</p>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:10px">Une icône WhatsApp verte s'affiche sur vos produits. Format 237 + 9 chiffres. Laissez vide pour la cacher.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="wWhatsapp" class="f-inp" style="flex:1;min-width:200px;font-size:16px" placeholder="237XXXXXXXXX" inputmode="numeric" maxlength="16" autocomplete="off">
+        <button onclick="saveWhatsapp()" class="f-btn">Enregistrer</button>
+      </div>
+      <p id="wMsg" style="font-size:13px;margin-top:8px;min-height:18px"></p>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Commande</th><th>Type</th><th>Part vendeur</th><th>Livraison</th><th>Versement</th></tr></thead>
+        <tbody id="wBody"><tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <div id="panel-notifications" style="display:none">
     <div style="background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center">
