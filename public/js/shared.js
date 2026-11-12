@@ -106,3 +106,9 @@ async function fillCatList() {
   } catch(e) {}
 }
 document.addEventListener('DOMContentLoaded', fillCatList);
+
+// ── Produit physique / digital : le champ « lien de téléchargement » n'apparaît que pour le digital ──
+function onTypeChange() {
+  const t = document.getElementById('pType'), b = document.getElementById('pDigitalBox');
+  if (t && b) b.style.display = t.value === 'digital' ? 'flex' : 'none';
+}

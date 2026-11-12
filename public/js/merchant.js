@@ -63,7 +63,7 @@ async function loadStats() {
 
 // ── Tabs ──
 function switchTab(tab) {
-  ['products','orders','stock','notifications'].forEach(t => {
+  ['products','orders','stock','notifications','wallet'].forEach(t => {
     const panel = document.getElementById('panel-'+t);
     const btn   = document.getElementById('tab-'+t);
     if (panel) panel.style.display = t===tab ? 'block' : 'none';
@@ -73,6 +73,7 @@ function switchTab(tab) {
   if (tab==='products')      loadProducts();
   if (tab==='orders')        loadOrders();
   if (tab==='stock')         loadStock();
+  if (tab==='wallet')        loadWallet();
   if (tab==='notifications') { loadNotifications(); NOTIF_INTERVAL=setInterval(loadNotifications,10000); }
 }
 
@@ -111,6 +112,7 @@ async function editProduct(id) {
     document.getElementById('pUnit').value   = p.unit||'';
     document.getElementById('pImg').value    = p.imageUrl||'';
     setImgPreview(p.imageUrl||'');
+    { const tt=document.getElementById('pType'); if(tt){ tt.value=p.type||'physical'; onTypeChange(); } const dg=document.getElementById('pDigital'); if(dg) dg.value=''; }
     document.getElementById('pDesc').value   = p.description||'';
     document.getElementById('formTitle').textContent = '✏️ Modifier le produit';
     window.scrollTo({ top:0, behavior:'smooth' });
@@ -120,6 +122,7 @@ async function editProduct(id) {
 function resetForm() {
   ['pEditId','pName','pPrice','pStock','pCat','pUnit','pImg','pDesc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   clearImage();
+  { const tt=document.getElementById('pType'); if(tt){ tt.value='physical'; onTypeChange(); } const dg=document.getElementById('pDigital'); if(dg) dg.value=''; }
   document.getElementById('formTitle').textContent = '➕ Nouveau produit';
 }
 
@@ -128,7 +131,7 @@ async function submitProduct() {
   const name  = document.getElementById('pName').value.trim();
   const price = document.getElementById('pPrice').value;
   if (!name||!price) { toast('Nom et prix requis','err'); return; }
-  const body = { name, price:Number(price), stock:Number(document.getElementById('pStock').value)||0, category:document.getElementById('pCat').value||'Divers', unit:document.getElementById('pUnit').value||'unité', imageUrl:document.getElementById('pImg').value||'', description:document.getElementById('pDesc').value||'', sellerId:USER.id||'merchant' };
+  const body = { name, price:Number(price), stock:Number(document.getElementById('pStock').value)||0, category:document.getElementById('pCat').value||'Divers', unit:document.getElementById('pUnit').value||'unité', imageUrl:document.getElementById('pImg').value||'', description:document.getElementById('pDesc').value||'', sellerId:USER.id||'merchant', type:document.getElementById('pType').value, digitalUrl:(document.getElementById('pDigital').value||'').trim() };
   try {
     const r = await api(id?'/products/'+id:'/products', { method:id?'PUT':'POST', body:JSON.stringify(body) });
     const d = await r.json();
@@ -152,20 +155,28 @@ async function loadOrders(status=ORDER_STATUS) {
     const r = await api('/orders?limit=100'+(status?'&status='+encodeURIComponent(status):'')); const d = await r.json();
     const orders = d.orders||[];
     if (!orders.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">Aucune commande.</td></tr>'; return; }
-    const pillMap = { PENDING:'background:#fef9c3;color:#854d0e', 'VALIDÉ':'background:#dcfce7;color:#166534', 'REFUSÉ':'background:#fee2e2;color:#991b1b', LIVRÉ:'background:#f0fdf4;color:#166534', NEGOCIATED:'background:#fef9c3;color:#854d0e' };
+    const pillMap = { PENDING:'background:#fef9c3;color:#854d0e', 'VALIDÉ':'background:#dcfce7;color:#166534', 'REFUSÉ':'background:#fee2e2;color:#991b1b', LIVRÉ:'background:#f0fdf4;color:#166534', NEGOCIATED:'background:#fef9c3;color:#854d0e', EXPIRED:'background:#f3f4f6;color:#374151' };
+    const DELIV = { AWAITING:'⏳ attend la réception du client', VALIDATED:'📸 validée par photo', DISPUTE:'⚠️ litige : versement suspendu', REFUND_DUE:'remboursement client' };
+    const btn = 'padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #86efac;background:#f0fdf4;color:#16a34a';
     tbody.innerHTML = orders.map(o=>{
       const prods=(o.items||[]).map(i=>`${i.name}×${i.qty||1}`).join(', ');
       const pill=pillMap[o.status]||'background:#f3f4f6;color:#374151';
+      const physical = o.orderType === 'physical';
+      const delivery = physical && DELIV[o.deliveryStatus] ? `<div style="font-size:10px;color:#6b7280;margin-top:3px">${esc(DELIV[o.deliveryStatus])}</div>` : (o.orderType === 'digital' && o.status !== 'PENDING' ? '<div style="font-size:10px;color:#2563eb;margin-top:3px">⚡ digital — versement immédiat</div>' : '');
+      const shipped = o.shippedAt ? `<div style="font-size:10px;color:#6b7280">expédié le ${esc(fmtDate(o.shippedAt))}</div>` : '';
+      const canShip = o.status==='VALIDÉ' && physical && o.deliveryStatus==='AWAITING' && !o.shippedAt;
+      const canAsk  = o.status==='VALIDÉ' && physical && o.deliveryStatus==='AWAITING' && o.paidAt && (Date.now()-new Date(o.paidAt).getTime())>=3*86400000;
       return `<tr>
-        <td style="font-family:monospace;font-size:12px">${o.orderNumber||'—'}</td>
-        <td style="font-weight:600">${o.customerName||o.guestPhone||'—'}</td>
-        <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${prods}">${prods||'—'}</td>
-        <td style="font-weight:700;color:#f97316">${fmt(o.finalAmount||o.amount||0)}</td>
-        <td><span style="${pill};padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700">${o.status}</span></td>
+        <td style="font-family:monospace;font-size:12px">${esc(o.orderNumber||'—')}</td>
+        <td style="font-weight:600">${esc(o.customerName||o.guestPhone||'—')}</td>
+        <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(prods)}">${esc(prods||'—')}</td>
+        <td style="font-weight:700;color:#f97316">${fmt(o.finalAmount||o.amount||0)}${o.montant_vendeur?`<div style="font-size:10px;color:#6b7280;font-weight:400">pour vous : ${fmt(o.montant_vendeur)}</div>`:''}</td>
+        <td><span style="${pill};padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700">${esc(o.status)}</span>${delivery}${shipped}</td>
         <td style="font-size:11px;color:#9ca3af">${fmtDate(o.createdAt)}</td>
         <td>
-          ${o.status==='VALIDÉ'?`<button onclick="markLivre('${o._id}')" style="padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f0fdf4;color:#16a34a;border:1px solid #86efac">📦 Livré</button>`:''}
-          <button onclick="downloadFile('/api/orders/${o._id}/invoice','facture-${o.orderNumber||o._id}.pdf')" style="margin-left:4px;color:#f97316;font-size:11px;font-weight:600;background:none;border:none;cursor:pointer">📄</button>
+          ${canShip?`<button onclick="markLivre('${esc(o._id)}')" style="${btn}">📦 Expédié</button>`:''}
+          ${canAsk?`<button onclick="requestValidation('${esc(o._id)}')" style="${btn};background:#fff7ed;color:#c2410c;border-color:#fed7aa">Demander la validation</button>`:''}
+          <button onclick="downloadFile('/api/orders/${esc(o._id)}/invoice','facture-${esc(o.orderNumber||o._id)}.pdf')" style="margin-left:4px;color:#f97316;font-size:11px;font-weight:600;background:none;border:none;cursor:pointer">📄</button>
         </td>
       </tr>`;
     }).join('');
@@ -179,7 +190,7 @@ async function markLivre(orderId) {
     const r = await api('/orders/'+orderId+'/status',{method:'PUT',body:JSON.stringify({status:'LIVRÉ'})});
     const d = await r.json();
     if (!r.ok) { toast(d.error||'Erreur','err'); return; }
-    toast('Commande marquée LIVRÉE ✅'); loadOrders();
+    toast('Commande marquée expédiée ✅ — le client confirmera la réception avec une photo'); loadOrders();
   } catch(e) { toast('Erreur','err'); }
 }
 
@@ -260,6 +271,42 @@ async function downloadFile(url, filename) {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   } catch(e) { toast('Erreur réseau', 'err'); }
+}
+
+async function requestValidation(orderId) {
+  try {
+    const r = await api('/kpay/request-validation', { method: 'POST', body: JSON.stringify({ orderId }) });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Erreur', 'err'); return; }
+    toast(d.message || 'Demande envoyée'); loadOrders();
+  } catch(e) { toast('Erreur réseau', 'err'); }
+}
+
+// ── Portefeuille : solde bloqué / disponible / versé + WhatsApp ──
+async function loadWallet() {
+  try {
+    const r = await api('/kpay/merchant/wallet'); const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Erreur', 'err'); return; }
+    const set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+    set('wBlocked', fmt(d.solde_bloque)); set('wAvail', fmt(d.solde_disponible)); set('wPaid', fmt(d.total_verse));
+    set('wInfo', 'Produit physique : l\'argent reste bloqué jusqu\'à ce que le client confirme la réception avec une photo. Produit digital : versement immédiat. Commission de la plateforme : ' + Math.round((d.commissionRate || 0) * 100) + ' % (fixée par le serveur, non modifiable).');
+    const w = document.getElementById('wWhatsapp'); if (w && document.activeElement !== w) w.value = d.whatsapp || '';
+    const L = { BLOCKED:'🔒 bloqué', READY:'prêt', PROCESSING:'⏳ en cours', PAID:'✅ versé', FAILED:'❌ échec (contactez l\'admin)', WAITING_FUNDS:'⏳ en attente', UNCERTAIN:'⏳ vérification', BLOCKED_DISPUTE:'⚠️ litige' };
+    const body = document.getElementById('wBody');
+    body.innerHTML = (d.recent || []).length ? d.recent.map(o => `<tr><td style="font-family:monospace;font-size:12px">${esc(o.orderNumber)}</td><td>${o.orderType==='digital'?'⚡ digital':'📦 physique'}</td><td style="font-weight:700">${fmt(o.montant_vendeur)}</td><td style="font-size:12px">${esc(o.deliveryStatus)}</td><td>${esc(L[o.payoutStatus]||o.payoutStatus)}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af">Aucune vente pour l\'instant.</td></tr>';
+  } catch(e) { toast('Erreur réseau', 'err'); }
+}
+async function saveWhatsapp() {
+  const v = (document.getElementById('wWhatsapp').value || '').replace(/\s+/g, ''), msg = document.getElementById('wMsg');
+  const say = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#16a34a' : '#dc2626'; };
+  if (v && !/^237[0-9]{9}$/.test(v)) { say('WhatsApp invalide : mets 237XXXXXXXXX', false); return; }
+  try {
+    const r = await api('/kpay/merchant/profile', { method: 'PUT', body: JSON.stringify({ whatsapp: v }) });
+    const d = await r.json();
+    if (!r.ok) { say(d.error || 'Erreur', false); return; }
+    say(v ? 'WhatsApp enregistré : l\'icône apparaît sur vos produits.' : 'WhatsApp retiré : l\'icône est cachée.', true);
+  } catch(e) { say('Erreur réseau', false); }
 }
 
 async function doLogout() {

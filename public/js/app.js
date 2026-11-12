@@ -157,6 +157,16 @@ function renderCartItems() {
   if(btn)btn.style.display='block';
 }
 
+// ── WhatsApp du vendeur : icône verte sur chaque carte, cachée si le vendeur n'a pas de numéro ──
+const BRAND = 'InvestPro';
+const WA_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>';
+function waLink(p) {
+  const n = String(p.sellerWhatsapp || '');
+  if (!/^237[0-9]{9}$/.test(n)) return '';
+  const msg = 'Bonjour, je suis intéressé par votre produit ' + p.name + ' sur ' + BRAND;
+  return '<a class="gp-wa" href="https://wa.me/' + n + '?text=' + encodeURIComponent(msg) + '" target="_blank" rel="noopener noreferrer" title="Écrire au vendeur sur WhatsApp" aria-label="Écrire au vendeur sur WhatsApp">' + WA_ICON + '</a>';
+}
+
 // ── PRODUITS ──
 async function loadProducts(category='',search='') {
   CUR_CAT=category;
@@ -188,6 +198,7 @@ async function loadProducts(category='',search='') {
         <div style="position:relative">
           <img src="${p.imageUrl||'https://via.placeholder.com/300x180?text=🌶️'}" class="gp-card-img" alt="${p.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x180?text=🌶️'">
           ${hasDisc?`<span style="position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;padding:3px 8px;border-radius:100px;font-size:10px;font-weight:700">-${p.discount}%</span>`:''}
+          ${p.type==='digital'?`<span class="gp-dig">⚡ Digital</span>`:''}
           ${out?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center"><span style="background:#fff;color:#ef4444;font-size:11px;font-weight:700;padding:4px 12px;border-radius:100px">Épuisé</span></div>`:''}
         </div>
         <div class="gp-card-body">
@@ -206,7 +217,7 @@ async function loadProducts(category='',search='') {
               </div>
               ${low?`<div class="gp-card-stock-low">⚠️ Plus que ${p.stock}</div>`:''}
             </div>
-            <button class="gp-add-btn" onclick="addToCart('${p._id}')" ${out?'disabled':''} title="Ajouter au panier">+</button>
+            <div style="display:flex;gap:6px;align-items:center">${waLink(p)}<button class="gp-add-btn" onclick="addToCart('${p._id}')" ${out?'disabled':''} title="Ajouter au panier">+</button></div>
           </div>
         </div>
       </div>`;
@@ -347,70 +358,82 @@ function selectOp(op) {
 }
 
 async function submitPayment() {
-  const phone   =$('ckPhone')?.value?.trim();
-  const name    =$('ckName')?.value?.trim();
-  const location=$('ckLocation')?.value?.trim();
-  const payBtn  =$('payBtn');const payMsg=$('payMsg');
+  const phone   = $('ckPhone')?.value?.trim();
+  const name    = $('ckName')?.value?.trim();
+  const location= $('ckLocation')?.value?.trim();
+  const payBtn  = $('payBtn'); const payMsg = $('payMsg');
 
-  if(!phone){toast('Entrez votre numéro Mobile Money','err');return;}
-  if(!location){toast('Entrez votre localisation','err');return;}
-  if(!SEL_OP){toast('Choisissez un opérateur','err');return;}
-  if(!CART.length){toast('Panier vide','err');return;}
+  if (!phone)    { toast('Entrez votre numéro Mobile Money', 'err'); return; }
+  if (!location) { toast('Entrez votre localisation', 'err'); return; }
+  if (!SEL_OP)   { toast('Choisissez un opérateur', 'err'); return; }
+  if (!CART.length) { toast('Panier vide', 'err'); return; }
 
-  payBtn.disabled=true;payBtn.textContent='⏳ Traitement…';
-  payMsg.style.display='none';
+  clearInterval(POLL_INT);
+  payBtn.disabled = true; payBtn.textContent = '⏳ Traitement…';
+  payMsg.style.display = 'none';
+  const show = (cls, text, link) => {
+    payMsg.style.display = 'block'; payMsg.className = 'gp-pay-msg ' + cls; payMsg.textContent = text;
+    if (link) { const a = document.createElement('a'); a.href = '/suivi.html'; a.textContent = 'Suivre ma commande →'; a.style.cssText = 'display:block;margin-top:8px;font-weight:700;text-decoration:underline'; payMsg.appendChild(a); }
+  };
 
   try {
-    const body={
-      phone,
-      provider:SEL_OP,
-      customerName:name||'Client anonyme',
-      address:location,
-      items:CART.map(c=>({productId:c._id,qty:c.qty})),
-    };
-    const r=await fetch('/api/payment/pay',{
-      method:'POST',
-      headers:authHeaders(),
-      credentials:'include',
-      body:JSON.stringify(body),
+    const r = await fetch('/api/kpay/pay', {
+      method: 'POST', headers: authHeaders(), credentials: 'include',
+      body: JSON.stringify({
+        phone, provider: SEL_OP, customerName: name || '', address: location,
+        items: CART.map(c => ({ productId: c._id, qty: c.qty })),     // le prix n'est JAMAIS envoyé : le serveur le relit en base
+      }),
     });
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.error||data.detail||'Erreur paiement');
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Erreur paiement');
 
-    payMsg.style.display='block';
-    payMsg.className='gp-pay-msg pending';
-    payMsg.textContent=data.message||'Validez le paiement sur votre téléphone…';
-    payBtn.textContent='⏳ En attente de confirmation…';
+    show('pending', data.message || 'Validez le paiement sur votre téléphone…');
+    payBtn.textContent = '⏳ En attente de confirmation…';
+    if (!data.kpayId) {                                   // pas d'identifiant KPay : on ne peut pas suivre automatiquement
+      show('pending', 'Paiement lancé. Gardez votre numéro de commande : ' + data.orderNumber);
+      payBtn.textContent = 'Paiement lancé';
+      return;
+    }
 
-    const extId=data.externalId;
-    let attempts=0;
-    POLL_INT=setInterval(async()=>{
+    // mémorise la commande sur cet appareil (suivi sans compte)
+    try {
+      const saved = JSON.parse(localStorage.getItem('gp_orders') || '[]').filter(o => o.kpayId !== data.kpayId);
+      saved.unshift({ kpayId: data.kpayId, token: data.trackToken, orderNumber: data.orderNumber, orderType: data.orderType, at: Date.now() });
+      localStorage.setItem('gp_orders', JSON.stringify(saved.slice(0, 30)));
+    } catch(e) {}
+
+    let attempts = 0;
+    POLL_INT = setInterval(async () => {
       attempts++;
-      if(attempts>36){clearInterval(POLL_INT);payBtn.disabled=false;payBtn.textContent='Réessayer';payMsg.className='gp-pay-msg error';payMsg.textContent='Délai dépassé. Vérifiez votre téléphone et réessayez.';return;}
-      try{
-        const sr=await fetch('/api/payment/status/'+extId);const sd=await sr.json();
-        if(sd.status==='VALIDÉ'){
+      if (attempts > 36) {
+        clearInterval(POLL_INT); payBtn.disabled = false; payBtn.textContent = 'Réessayer';
+        show('error', 'Délai dépassé. Si vous avez payé, retrouvez votre commande dans « Suivi ».', true);
+        return;
+      }
+      try {
+        const sr = await fetch('/api/kpay/status/' + encodeURIComponent(data.kpayId) + '?token=' + encodeURIComponent(data.trackToken));
+        const sd = await sr.json();
+        if (sd.status === 'VALIDÉ' || sd.status === 'LIVRÉ') {
           clearInterval(POLL_INT);
-          payMsg.className='gp-pay-msg success';
-          payMsg.textContent='✅ Paiement confirmé ! Votre commande est en cours de préparation.';
-          payBtn.textContent='Commande validée ✅';
-          CART.length=0;saveCart();updateCartBadge();
-          toast('Commande validée 🎉','ok');
-        } else if(sd.status==='REFUSÉ'){
+          CART.length = 0; saveCart(); updateCartBadge();
+          payBtn.textContent = 'Commande validée ✅';
+          show('success', data.orderType === 'digital'
+            ? '✅ Paiement confirmé ! Votre lien de téléchargement est disponible dans « Suivi de commande ».'
+            : '✅ Paiement confirmé ! À la réception, confirmez avec une photo du produit dans « Suivi de commande » : le vendeur n\'est payé qu\'après.', true);
+          toast('Commande validée 🎉', 'ok');
+        } else if (sd.status === 'REFUSÉ' || sd.status === 'EXPIRED') {
           clearInterval(POLL_INT);
-          payMsg.className='gp-pay-msg error';
-          payMsg.textContent='❌ Paiement refusé. Vérifiez votre solde et réessayez.';
-          payBtn.disabled=false;payBtn.textContent='Réessayer';
-          toast('Paiement refusé','err');
+          payBtn.disabled = false; payBtn.textContent = 'Réessayer';
+          show('error', '❌ Paiement refusé ou expiré. Vérifiez votre solde et réessayez.');
+          toast('Paiement non abouti', 'err');
         }
-      }catch(e){}
-    },5000);
+      } catch(e) { /* réseau : on réessaie au prochain tour */ }
+    }, 5000);
 
-  }catch(e){
-    payBtn.disabled=false;payBtn.textContent='Réessayer';
-    payMsg.style.display='block';payMsg.className='gp-pay-msg error';
-    payMsg.textContent='❌ '+e.message;
-    toast(e.message,'err');
+  } catch(e) {
+    payBtn.disabled = false; payBtn.textContent = 'Réessayer';
+    show('error', '❌ ' + e.message);
+    toast(e.message, 'err');
   }
 }
 
