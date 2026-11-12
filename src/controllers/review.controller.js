@@ -11,7 +11,7 @@ async function createReview(req, res) {
     if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'rating doit être entre 1 et 5' });
 
     // Vérifier que l'utilisateur a bien acheté ce produit
-    const order = await Order.findOne({ _id: orderId, userId: req.user.id, status: 'VALIDÉ', 'items.productId': productId });
+    const order = await Order.findOne({ _id: orderId, userId: req.user.id, status: { $in: ['VALIDÉ','LIVRÉ'] }, 'items.productId': productId });
     if (!order) return res.status(403).json({ error: 'Vous devez avoir acheté ce produit pour laisser un avis' });
 
     const exists = await Review.findOne({ productId, userId: req.user.id });

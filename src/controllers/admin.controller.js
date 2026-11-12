@@ -64,7 +64,7 @@ async function adminLogin(req, res) {
     }
 
     const token = jwt.sign(
-      { id: admin._id, email: admin.email, role: 'admin', tv: admin.tokenVersion },
+      { id: admin._id, email: admin.email, role: 'admin', tv: admin.tokenVersion, adminName: username.toLowerCase() },
       process.env.JWT_SECRET,
       { expiresIn: '8h' }
     );
@@ -255,9 +255,9 @@ async function getStats(req, res) {
       Product.countDocuments({ isDeleted:false }),
       Order.countDocuments(),
       Order.countDocuments({ status:'PENDING' }),
-      Order.countDocuments({ status:'VALIDÉ' }),
+      Order.countDocuments({ status:{ $in:['VALIDÉ','LIVRÉ'] } }),
       User.countDocuments({ isOnline:true, isDeleted:false }),
-      Order.aggregate([{ $match:{ status:'VALIDÉ' } },{ $group:{ _id:null, total:{ $sum:'$finalAmount' } } }]),
+      Order.aggregate([{ $match:{ status:{ $in:['VALIDÉ','LIVRÉ'] } } },{ $group:{ _id:null, total:{ $sum:'$finalAmount' } } }]),
     ]);
     res.json({ users, merchants, products, orders, pending, valide, online, revenue: revenue[0]?.total||0 });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -277,7 +277,7 @@ async function getOrders(req, res) {
       Order.aggregate([{ $group:{ _id:'$status', count:{ $sum:1 } } }]),
     ]);
     const stats = {}; agg.forEach(s => stats[s._id] = s.count);
-    res.json({ orders, total, page: Number(page), stats: { pending: stats.PENDING||0, valide: stats['VALIDÉ']||0, refuse: stats['REFUSÉ']||0 } });
+    res.json({ orders, total, page: Number(page), stats: { pending: stats.PENDING||0, valide: (stats['VALIDÉ']||0) + (stats['LIVRÉ']||0), refuse: stats['REFUSÉ']||0 } });
   } catch(e) { res.status(500).json({ error: e.message }); }
 }
 
@@ -312,24 +312,6 @@ async function getJournalCsv(req, res) {
 // ══════════════════════════════════════════════
 // PARAMÈTRES — frais de livraison
 // ══════════════════════════════════════════════
-async function getSettings(req, res) {
-  try {
-    const settings = await Settings.find().lean();
-    const obj = {}; settings.forEach(s => obj[s.key] = s.value);
-    res.json(obj);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-}
-
-async function updateSettings(req, res) {
-  try {
-    const Settings = require('../models/Settings');
-    const { key, value } = req.body;
-    if (!key) return res.status(400).json({ error: 'key requis' });
-    await Settings.findOneAndUpdate({ key }, { value }, { upsert: true, new: true });
-    await AuditLog.create({ adminId: req.user.id, action: 'UPDATE_SETTINGS', details: { key, value }, ip: req.ip });
-    res.json({ success: true, key, value });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-}
 
 // ══════════════════════════════════════════════
 // CRÉER UN MARCHAND + SA BOUTIQUE
@@ -345,12 +327,15 @@ async function createMerchant(req, res) {
 
     if (!name || !storeName || !email || !password) return res.status(400).json({ error: 'Nom, boutique, e-mail et mot de passe requis' });
     if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Adresse e-mail invalide' });
-    if (phone && !PHONE_RE.test(phone)) return res.status(400).json({ error: 'Numéro de téléphone invalide' });
+    if (!phone || !PHONE_RE.test(phone)) return res.status(400).json({ error: 'Téléphone Mobile Money du marchand requis (c\'est là que ses ventes seront versées)' });
+    const whatsapp = String(req.body.whatsapp || '').replace(/\s+/g, '');
+    if (whatsapp && !/^237[0-9]{9}$/.test(whatsapp)) return res.status(400).json({ error: 'WhatsApp invalide : mets 237XXXXXXXXX' });
+    const payoutProvider = ['MTN_MOMO_CMR', 'ORANGE_CMR'].includes(req.body.payoutProvider) ? req.body.payoutProvider : '';
     if (password.length < 6 || !/^[A-Z]/.test(password)) return res.status(400).json({ error: 'Mot de passe : 6 caractères minimum, première lettre en majuscule' });
     if (await User.findOne({ email })) return res.status(409).json({ error: 'Cet e-mail est déjà utilisé' });
 
     const expiresAt = days > 0 ? new Date(Date.now() + Math.min(days, 3650) * 86400000) : undefined;
-    const user = await User.create({ name, email, phone, password, role: 'merchant', storeName, expiresAt });
+    const user = await User.create({ name, email, phone, password, role: 'merchant', storeName, expiresAt, whatsapp, payoutProvider });
     const shop = await Shop.create({ name: storeName, ownerId: user._id, phone });
     user.shopId = shop._id;
     await user.save();
@@ -368,5 +353,4 @@ module.exports = {
   getShops, verifyShopKyc, deleteShop, createMerchant,
   getStats, getOrders,
   getAudit, getJournalCsv,
-  getSettings, updateSettings,
 };

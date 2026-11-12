@@ -1,6 +1,20 @@
 'use strict';
 const Product = require('../models/Product');
-const { clean, safeUrl } = require('../utils/clean');
+const { clean, safeUrl, safeHttpsUrl } = require('../utils/clean');
+const User = require('../models/User');
+
+// Ajoute le WhatsApp (237 + 9 chiffres) et le nom de la boutique du vendeur ; le lien digital n'est JAMAIS exposé ici
+async function withSeller(list) {
+  const ids = [...new Set(list.map(p => String(p.sellerId)).filter(x => /^[a-f0-9]{24}$/.test(x)))];
+  const users = ids.length ? await User.find({ _id: { $in: ids }, isDeleted: false }).select('whatsapp storeName name').lean() : [];
+  const by = {}; users.forEach(u => { by[String(u._id)] = u; });
+  list.forEach(p => {
+    const u = by[String(p.sellerId)];
+    p.sellerWhatsapp = u && /^237[0-9]{9}$/.test(u.whatsapp || '') ? u.whatsapp : '';
+    p.storeName = u ? (u.storeName || u.name || '') : '';
+  });
+  return list;
+}
 const san = s => typeof s==='string' ? clean(s, 2000) : s;
 const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // « boissons », « Boissons  » et « BOISSONS » deviennent la même catégorie
@@ -29,6 +43,7 @@ async function getAll(req, res) {
       Product.find(filter).sort({ createdAt:-1 }).skip((Number(page)-1)*Number(limit)).limit(Number(limit)).lean({ virtuals:true }),
       Product.countDocuments(filter),
     ]);
+    await withSeller(products);
     res.json({ products, total, page:Number(page), pages:Math.ceil(total/Number(limit)) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 }
@@ -37,6 +52,7 @@ async function getOne(req, res) {
   try {
     const p = await Product.findOne({ _id:req.params.id, isDeleted:false }).lean({ virtuals:true });
     if (!p || !p.isActive) return res.status(404).json({ error:'Produit introuvable' });
+    await withSeller([p]);
     res.json(p);
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
@@ -45,7 +61,10 @@ async function create(req, res) {
   try {
     const { name, price, stock, category, description, imageUrl, unit, shopId } = req.body;
     if (!name || !price || !req.user?.id) return res.status(400).json({ error:'name, price requis' });
-    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:normCat(category), description:san(description||''), imageUrl:safeUrl(imageUrl), unit:san(unit||'unité'), sellerId:req.user.id, shopId:req.user.shopId||null });
+    const type = req.body.type === 'digital' ? 'digital' : 'physical';
+    const digitalUrl = type === 'digital' ? safeHttpsUrl(req.body.digitalUrl) : '';
+    if (type === 'digital' && !digitalUrl) return res.status(400).json({ error:'Produit digital : lien de téléchargement https:// obligatoire' });
+    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:normCat(category), description:san(description||''), imageUrl:safeUrl(imageUrl), unit:san(unit||'unité'), type, digitalUrl, sellerId:req.user.id, shopId:req.user.shopId||null });
     res.status(201).json(p);
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
@@ -53,7 +72,7 @@ async function create(req, res) {
 async function update(req, res) {
   try {
     if (!(await ownProduct(req, res))) return;
-    const allowed = ['name','price','stock','category','description','imageUrl','unit','isActive'];
+    const allowed = ['name','price','stock','category','description','imageUrl','unit','isActive','type','digitalUrl'];
     const upd = {};
     allowed.forEach(k => { if(req.body[k]!==undefined) upd[k]=req.body[k]; });
     if(upd.name)        upd.name        = san(upd.name);
@@ -61,6 +80,12 @@ async function update(req, res) {
     if(upd.category) upd.category = normCat(upd.category);
     if(upd.unit) upd.unit = san(upd.unit);
     if(upd.imageUrl !== undefined) upd.imageUrl = safeUrl(upd.imageUrl);
+    if(upd.type !== undefined) upd.type = upd.type === 'digital' ? 'digital' : 'physical';
+    if(upd.digitalUrl !== undefined) {
+      const link = safeHttpsUrl(upd.digitalUrl);
+      if (link) upd.digitalUrl = link; else delete upd.digitalUrl;            // vide : on garde le lien actuel
+    }
+    if(upd.type === 'physical') upd.digitalUrl = '';
     if(upd.price)       upd.price       = Number(upd.price);
     if(upd.stock!==undefined) upd.stock = Number(upd.stock);
     const p = await Product.findByIdAndUpdate(req.params.id, upd, { new:true, runValidators:true });

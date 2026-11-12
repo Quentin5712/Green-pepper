@@ -30,7 +30,7 @@ async function get(req, res) {
   try {
     if (!/^[a-f0-9]{24}$/.test(req.params.id)) return res.status(404).end();
     const img = await Image.findById(req.params.id);
-    if (!img) return res.status(404).end();
+    if (!img || (img.kind && img.kind !== 'product')) return res.status(404).end();   // les photos de livraison ne sont JAMAIS publiques
     res.set({
       'Content-Type': img.mime,
       'Cache-Control': 'public, max-age=31536000, immutable',

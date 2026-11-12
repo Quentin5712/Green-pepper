@@ -1,234 +1,31 @@
 'use strict';
-const crypto   = require('crypto');
-const Order    = require('../models/Order');
-const Product  = require('../models/Product');
-const Cart     = require('../models/Cart');
-const TransactionLog = require('../models/TransactionLog');
-const kpay     = require('../utils/kpay');
+// Le paiement (pay / webhook / statut) est dans src/routes/kpay.js.
+// Ici : liste des commandes, facture PDF, expédition par le vendeur.
+const path   = require('path');
+const fs     = require('fs');
+const Order  = require('../models/Order');
+const logger = require('../utils/logger');
 const { generateInvoice } = require('../utils/invoice');
-const { notifyMerchant, notifyAdmin, notifyUser } = require('../utils/notify');
-const logger   = require('../utils/logger');
-const { clean, PHONE_RE } = require('../utils/clean');
-const path     = require('path');
-const fs       = require('fs');
+const { notifyUser } = require('../utils/notify');
 
-// POST /api/payment/pay — guest ou connecté
-const sellersOf = items => [...new Set((items||[]).map(i => String(i.sellerId||'')).filter(Boolean))];
-
-async function pay(req, res) {
-  try {
-    const { phone, provider, items, address, customerName } = req.body;
-    if (!phone || !provider || !items?.length) return res.status(400).json({ error: 'phone, provider et items requis' });
-    if (!PHONE_RE.test(String(phone))) return res.status(400).json({ error: 'Numéro de téléphone invalide' });
-    if (!['MTN_MOMO_CMR','ORANGE_CMR'].includes(provider)) return res.status(400).json({ error: 'provider invalide' });
-
-    const orderItems = [];
-    let amount = 0;
-
-    for (const item of items) {
-      const qty = Number(item.qty) || 1;
-      if (qty < 1 || qty > 10) return res.status(400).json({ error: 'qty doit être entre 1 et 10' });
-
-      const prod = await Product.findOneAndUpdate(
-        { _id: item.productId, isDeleted: false, isActive: true, stock: { $gte: qty } },
-        { $inc: { stock: -qty, reserved: qty } },
-        { new: true }
-      );
-      if (!prod) return res.status(409).json({ error: `Stock insuffisant pour le produit ${item.productId}` });
-
-      const unitPrice = prod.finalPrice;
-      orderItems.push({
-        productId:       prod._id,
-        name:            prod.name,
-        qty,
-        priceAtPurchase: unitPrice,
-        discountApplied: prod.discount || 0,
-        sellerId:        prod.sellerId,
-      });
-      amount += unitPrice * qty;
-    }
-
-    const finalAmount = amount;
-    const commission  = Math.round(finalAmount * 0.10);
-    const externalId  = 'GP-' + Date.now() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-
-    const order = await Order.create({
-      userId:      req.user?.id || null,
-      guestPhone:  req.user ? '' : String(phone).trim(),
-      customerName: clean(customerName || '', 80),
-      items:       orderItems,
-      amount,
-      finalAmount,
-      commission,
-      address:     clean(address || '', 300),
-      status:      'PENDING',
-      externalId,
-      provider,
-    });
-
-    await TransactionLog.create({ sellerIds: sellersOf(order.items), orderId: order._id, externalId, amount, finalAmount, commission, status: 'PENDING', provider, ip: req.ip });
-
-    let kpayData;
-    try {
-      kpayData = await kpay.initPayment({
-        amount: finalAmount, provider, phoneNumber: phone, externalId,
-        description: `Green Pepper — ${orderItems.map(i=>i.name).join(', ')}`,
-      });
-      // FIX 1 : On sauvegarde l'ID KPay (42dcfb45...) dans kpayTxId pour le réutiliser après
-      await Order.findByIdAndUpdate(order._id, { kpayResponse: kpayData, kpayTxId: kpayData.id || kpayData.reference || '' });
-    } catch(e) {
-      for (const item of orderItems) {
-        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.qty, reserved: -item.qty } });
-      }
-      await Order.findByIdAndUpdate(order._id, { status: 'REFUSÉ' });
-      await TransactionLog.create({ sellerIds: sellersOf(order.items), orderId: order._id, externalId, amount, finalAmount, commission, status: 'REFUSÉ', provider, ip: req.ip });
-      logger.error('KPay init failed:', e.message);
-      return res.status(502).json({ error: 'Erreur initialisation paiement', detail: e.response?.data || e.message });
-    }
-
-    logger.info(`PENDING: order=${order._id} ext=${externalId} amount=${finalAmount}`);
-    return res.json({
-      status:     'PENDING',
-      externalId,
-      orderId:    order._id,
-      orderNumber:order.orderNumber,
-      message:    provider === 'MTN_MOMO_CMR'
-        ? 'Composez *126# et confirmez le paiement, ou attendez la notification MoMo'
-        : 'Validez le paiement sur votre téléphone Orange Money',
-    });
-  } catch(e) {
-    logger.error('pay:', e.message);
-    res.status(500).json({ error: 'Erreur serveur paiement' });
-  }
-}
-
-const OK_STATUS   = ['SUCCESS','SUCCESSFUL','PAID','COMPLETED','VALIDATED'];
-const FAIL_STATUS = ['FAILED','REJECTED','CANCELLED','CANCELED','EXPIRED','REFUSED','DECLINED'];
-function normalizeStatus(raw) {
-  const st = String(raw || '').toUpperCase();
-  if (OK_STATUS.includes(st))   return 'SUCCESS';
-  if (FAIL_STATUS.includes(st)) return 'FAILED';
-  return 'PENDING';
-}
-
-async function applyResult(order, outcome, txId, raw, ip) {
-  if (order.status !== 'PENDING') return order.status;
-  const isSuccess = outcome === 'SUCCESS';
-  const newStatus = isSuccess ? 'VALIDÉ' : 'REFUSÉ';
-
-  const locked = await Order.findOneAndUpdate(
-    { _id: order._id, status: 'PENDING' },
-    { status: newStatus, kpayTxId: txId || '', kpayResponse: raw },
-    { new: true }
-  );
-  if (!locked) return order.status;
-
-  await TransactionLog.create({ sellerIds: sellersOf(order.items), orderId: order._id, externalId: order.externalId, amount: order.amount, finalAmount: order.finalAmount, commission: order.commission, status: newStatus, provider: order.provider, ip });
-
-  if (isSuccess) {
-    for (const item of order.items) {
-      if (item.productId) await Product.findByIdAndUpdate(item.productId, { $inc: { reserved: -item.qty } });
-    }
-    if (order.userId) await Cart.deleteMany({ userId: order.userId });
-    await generateInvoice(locked);
-    if (order.userId) await notifyUser(order.userId, 'customer', `✅ Commande ${order.orderNumber} confirmée — ${order.finalAmount.toLocaleString('fr-FR')} FCFA`, 'PAYMENT', String(order._id));
-    const sellerIds = [...new Set((order.items||[]).map(i=>i.sellerId).filter(Boolean))];
-    for (const sid of sellerIds) await notifyMerchant(sid, `🛒 Nouvelle commande VALIDÉE — ${order.orderNumber} — ${order.finalAmount.toLocaleString('fr-FR')} FCFA`, 'ORDER');
-    logger.info(`VALIDÉ: order=${order._id} ext=${order.externalId} tx=${txId}`);
-  } else {
-    for (const item of order.items) {
-      if (item.productId) await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.qty, reserved: -item.qty } });
-    }
-    if (order.userId) await notifyUser(order.userId, 'customer', `❌ Paiement refusé pour la commande ${order.orderNumber}`, 'PAYMENT', String(order._id));
-    logger.info(`REFUSÉ: order=${order._id} ext=${order.externalId}`);
-  }
-  return newStatus;
-}
-
-// POST /api/payment/callback — webhook KPay
-async function callback(req, res) {
-  try {
-    const body = req.body || {};
-    const d = body.data || body.payment || {};
-    const externalId = body.externalId || body.external_id || d.externalId || d.external_id;
-    const evt = String(body.event || body.type || '').toLowerCase();
-    let status = body.status || d.status;
-    if (!status) {
-      if (evt.includes('completed') || evt.includes('success')) status = 'SUCCESS';
-      else if (evt.includes('failed') || evt.includes('cancel') || evt.includes('expired')) status = 'FAILED';
-    }
-    const transactionId = body.transactionId || body.id || d.transactionId || d.id || '';
-    if (!externalId) return res.status(400).json({ error: 'externalId requis' });
-
-    const order = await Order.findOne({ externalId });
-    if (!order) { logger.warn(`CALLBACK: order not found ext=${externalId}`); return res.status(404).json({ error: 'Commande introuvable' }); }
-    if (order.status !== 'PENDING') return res.json({ ok: true, status: order.status });
-
-    const sig = req.headers['x-kpay-signature'] || req.headers['x-signature'] || '';
-    let outcome = null, txId = transactionId || '';
-
-    if (sig && kpay.verifyHmac(req.rawBody || JSON.stringify(req.body), sig)) {
-      outcome = normalizeStatus(status);
-    } else {
-      try {
-        // FIX 2 : On interroge KPay avec SON ID (42dcfb45...), pas avec GP-...
-        const kpayId = order.kpayTxId || order.kpayResponse?.id || order.kpayResponse?.reference || externalId;
-        const remote = await kpay.getStatus(kpayId);
-        const rs = remote.status || remote.data?.status;
-        outcome = normalizeStatus(rs);
-        txId = remote.transactionId || remote.data?.transactionId || txId;
-      } catch(e) {
-        logger.warn(`CALLBACK non vérifiable ext=${externalId} ip=${req.ip}: ${e.message}`);
-        return res.status(401).json({ error: 'Callback non vérifiable' });
-      }
-    }
-
-    if (outcome === 'PENDING') return res.json({ ok: true, status: 'PENDING' });
-    const final = await applyResult(order, outcome, txId, req.body, req.ip);
-    return res.json({ ok: true, status: final });
-  } catch(e) {
-    logger.error('callback:', e.message);
-    res.status(500).json({ error: 'Erreur traitement callback' });
-  }
-}
-
-// GET /api/payment/status/:externalId
-async function getStatus(req, res) {
-  try {
-    let order = await Order.findOne({ externalId: req.params.externalId });
-    if (!order) return res.status(404).json({ error: 'Commande introuvable' });
-
-    if (order.status === 'PENDING' && process.env.KPAY_API_KEY) {
-      try {
-        // FIX 3 : On interroge KPay avec SON ID (42dcfb45...), pas avec GP-...
-        const kpayId = order.kpayTxId || order.kpayResponse?.id || order.kpayResponse?.reference || order.externalId;
-        const remote = await kpay.getStatus(kpayId);
-        const outcome = normalizeStatus(remote.status || remote.data?.status);
-        if (outcome !== 'PENDING') {
-          await applyResult(order, outcome, remote.transactionId || remote.data?.transactionId || '', remote, req.ip);
-          order = await Order.findById(order._id);
-        }
-      } catch(e) { /* KPay injoignable : on renvoie l'état connu */ }
-    }
-    res.json({ status: order.status, orderNumber: order.orderNumber, finalAmount: order.finalAmount, createdAt: order.createdAt, kpayTxId: order.kpayTxId });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-}
+const STATUSES = ['PENDING', 'VALIDÉ', 'REFUSÉ', 'EXPIRED', 'NEGOCIATED', 'LIVRÉ'];
 
 async function getOrders(req, res) {
   try {
-    const { status, page=1, limit=50 } = req.query;
+    const { status, page = 1, limit = 50 } = req.query;
     const filter = {};
-    if (status) filter.status = status;
+    if (status && STATUSES.includes(status)) filter.status = status;
     if (req.user?.role === 'merchant') filter['items.sellerId'] = req.user.id;
     else if (req.user?.role === 'customer') filter.userId = req.user.id;
-    const [orders, total, stats] = await Promise.all([
-      Order.find(filter).sort({ createdAt:-1 }).skip((Number(page)-1)*Number(limit)).limit(Number(limit)).lean(),
+    const base = { ...filter }; delete base.status;                    // les compteurs ignorent le filtre de statut
+    const [orders, total, agg] = await Promise.all([
+      Order.find(filter).sort({ createdAt: -1 }).skip((Number(page) - 1) * Number(limit)).limit(Math.min(Number(limit), 200)).lean(),
       Order.countDocuments(filter),
-      Order.aggregate([{ $group:{ _id:'$status', count:{ $sum:1 } } }]),
+      Order.aggregate([{ $match: base }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     ]);
-    const statMap = {}; stats.forEach(s=>statMap[s._id]=s.count);
-    res.json({ orders, total, page:Number(page), stats:{ pending:statMap.PENDING||0, valide:statMap['VALIDÉ']||0, refuse:statMap['REFUSÉ']||0 } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const st = {}; agg.forEach(s => { st[s._id] = s.count; });
+    res.json({ orders, total, page: Number(page), stats: { pending: st.PENDING || 0, valide: (st['VALIDÉ'] || 0) + (st['LIVRÉ'] || 0), refuse: st['REFUSÉ'] || 0 } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 }
 
 async function getInvoice(req, res) {
@@ -245,23 +42,26 @@ async function getInvoice(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=facture-${order.orderNumber}.pdf`);
     fs.createReadStream(filePath).pipe(res);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 }
 
+// Le vendeur déclare « expédié ». Cela NE valide PAS la livraison et ne déclenche AUCUN versement :
+// seule la photo de l'acheteur le fait.
 async function updateOrderStatus(req, res) {
   try {
-    const { status } = req.body;
-    if (!['LIVRÉ'].includes(status)) return res.status(400).json({ error: 'Seul LIVRÉ est autorisé ici' });
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ error: 'Commande introuvable' });
-    const isMerchant = req.user.role === 'merchant' && order.items.some(i => String(i.sellerId) === req.user.id);
-    if (!isMerchant && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-    order.status = status;
-    order.trackingNumber = 'GP-TRK-' + Date.now();
+    const isSeller = (order.items || []).some(i => String(i.sellerId) === String(req.user.id));
+    if (req.user.role !== 'admin' && !isSeller) return res.status(403).json({ error: 'Accès refusé' });
+    if (order.status !== 'VALIDÉ') return res.status(400).json({ error: 'Seule une commande payée peut être expédiée' });
+    if (order.orderType !== 'physical') return res.status(400).json({ error: 'Produit digital : rien à expédier' });
+    order.shippedAt = new Date();
+    order.trackingNumber = order.trackingNumber || 'GP-TRK-' + Date.now();
     await order.save();
-    if (order.userId) await notifyUser(order.userId, 'customer', `📦 Commande ${order.orderNumber} marquée comme LIVRÉE`, 'ORDER', String(order._id));
-    res.json({ success: true, order });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    logger.info(`EXPÉDIÉ: order=${order.orderNumber} par ${req.user.id}`);
+    if (order.userId) await notifyUser(order.userId, 'customer', `📦 Votre commande ${order.orderNumber} a été expédiée. À la réception, confirmez avec une photo du produit.`, 'ORDER', String(order._id));
+    res.json({ success: true, shippedAt: order.shippedAt });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 }
 
-module.exports = { pay, callback, getStatus, getOrders, getInvoice, updateOrderStatus };
+module.exports = { getOrders, getInvoice, updateOrderStatus };

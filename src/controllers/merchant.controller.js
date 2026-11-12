@@ -12,8 +12,8 @@ async function getStats(req, res) {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
     const [caToday, caMonth, ordersPending, lowStock, onlineClients] = await Promise.all([
-      Order.aggregate([{ $match:{ 'items.sellerId':sellerId, status:'VALIDÉ', createdAt:{ $gte:today } } },{ $group:{ _id:null, total:{ $sum:'$finalAmount' } } }]),
-      Order.aggregate([{ $match:{ 'items.sellerId':sellerId, status:'VALIDÉ', createdAt:{ $gte:monthStart } } },{ $group:{ _id:null, total:{ $sum:'$finalAmount' } } }]),
+      Order.aggregate([{ $match:{ 'items.sellerId':sellerId, status:{ $in:['VALIDÉ','LIVRÉ'] }, createdAt:{ $gte:today } } },{ $group:{ _id:null, total:{ $sum:'$finalAmount' } } }]),
+      Order.aggregate([{ $match:{ 'items.sellerId':sellerId, status:{ $in:['VALIDÉ','LIVRÉ'] }, createdAt:{ $gte:monthStart } } },{ $group:{ _id:null, total:{ $sum:'$finalAmount' } } }]),
       Order.countDocuments({ 'items.sellerId':sellerId, status:'PENDING' }),
       Product.countDocuments({ sellerId, stock:{ $lt:5 }, isDeleted:false }),
       User.countDocuments({ isOnline:true, isDeleted:false }),
