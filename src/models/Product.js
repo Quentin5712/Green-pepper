@@ -13,6 +13,8 @@ const ProductSchema = new mongoose.Schema({
   sellerId:      { type: String, required: true },
   shopId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
   imageUrl:      { type: String, default: '' },
+  type:          { type: String, enum: ['physical','digital'], default: 'physical' },
+  digitalUrl:    { type: String, default: '', select: false },   // lien de téléchargement : remis seulement à l'acheteur payé
   rating:        { type: Number, default: 4.5, min: 0, max: 5 },
   reviewCount:   { type: Number, default: 0 },
   isActive:      { type: Boolean, default: true },

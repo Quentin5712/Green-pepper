@@ -6,5 +6,6 @@ const ImageSchema = new mongoose.Schema({
   mime:    { type: String, enum: ['image/jpeg','image/png','image/webp'], required: true },
   size:    { type: Number, required: true },
   ownerId: { type: String, required: true, index: true },
+  kind:    { type: String, enum: ['product','delivery'], default: 'product', index: true },
 }, { timestamps: true });
 module.exports = mongoose.model('Image', ImageSchema);

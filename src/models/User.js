@@ -28,6 +28,8 @@ const UserSchema = new mongoose.Schema({
   kycDocUrl:    { type: String, default: '' },
   // Marchand
   storeName:    { type: String, trim: true },
+  whatsapp:     { type: String, default: '' },                 // 237 + 9 chiffres
+  payoutProvider: { type: String, enum: ['', 'MTN_MOMO_CMR', 'ORANGE_CMR'], default: '' },  // opérateur de versement (vide = détecté)
   expiresAt:    { type: Date },
 }, {
   timestamps: true,
