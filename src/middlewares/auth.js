@@ -13,7 +13,7 @@ async function verifyToken(req, res, next) {
   if (!user || user.isDeleted)        return res.status(401).json({ error: 'Utilisateur introuvable' });
   if (user.isBanned)                  return res.status(403).json({ error: 'Compte banni' });
   if (user.tokenVersion !== payload.tv) return res.status(401).json({ error: 'Session révoquée. Reconnectez-vous.' });
-  req.user = { id: String(payload.id), role: user.role, shopId: user.shopId, email: payload.email, isImpersonated: payload.isImpersonated || false };
+  req.user = { id: String(payload.id), role: user.role, shopId: user.shopId, email: payload.email, adminName: payload.adminName || '', isImpersonated: payload.isImpersonated || false };
   next();
 }
 
@@ -42,4 +42,9 @@ function optionalAuth(req, res, next) {
   next();
 }
 
-module.exports = { verifyToken, verifyAdmin, verifyMerchant, optionalAuth };
+// Si un jeton est présent il doit être valide ; sinon on continue en visiteur (commande sans compte)
+function authIfPresent(req, res, next) {
+  return req.headers.authorization ? verifyToken(req, res, next) : next();
+}
+
+module.exports = { authIfPresent, verifyToken, verifyAdmin, verifyMerchant, optionalAuth };
