@@ -27,3 +27,54 @@ tr.cat-head{background:#fff7ed;cursor:pointer;user-select:none}
 tr.cat-head td{font-size:13px;color:#9a3412;padding:13px 14px;border-bottom:1px solid #fed7aa}
 tr.cat-head .cat-arrow{float:right;transition:transform .15s}
 tr.cat-head.closed .cat-arrow{transform:rotate(-90deg)}
+
+/* WhatsApp + badge digital (cartes produit) */
+.gp-wa{width:32px;height:32px;border-radius:50%;background:#25D366;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s}
+.gp-wa:active{transform:scale(.88)}
+.gp-dig{position:absolute;bottom:8px;left:8px;background:#2563eb;color:#fff;padding:3px 8px;border-radius:100px;font-size:10px;font-weight:700}
+
+/* Badge mode TEST / LIVE (admin) */
+.mode-badge{display:inline-block;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:800;letter-spacing:.04em}
+.mode-test{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.mode-live{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.mode-err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+
+/* Page de suivi de commande */
+.sv-main{max-width:720px;margin:0 auto;padding:24px 16px 80px}
+.sv-title{font-family:'Playfair Display',serif;font-size:26px;margin-bottom:4px}
+.sv-sub{font-size:13px;color:#6b7280;margin-bottom:20px}
+.sv-card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.sv-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sv-num{font-family:monospace;font-weight:700;font-size:14px}
+.sv-pill{display:inline-block;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+.sv-items{font-size:13px;color:#374151;margin:10px 0 4px}
+.sv-amount{font-weight:900;color:#f97316;font-size:16px}
+.sv-box{margin-top:12px;padding:12px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;font-size:13px;color:#7c2d12}
+.sv-box.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.sv-box.warn{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.sv-box.info{background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a}
+.sv-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.sv-btn{padding:11px 16px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer}
+.sv-btn.primary{background:#16a34a;color:#fff}
+.sv-btn.photo{background:#f97316;color:#fff;display:inline-flex;align-items:center;gap:6px}
+.sv-btn.ghost{background:#fff;border:1px solid #fca5a5;color:#dc2626}
+.sv-btn:disabled{opacity:.45;cursor:not-allowed}
+.sv-dl{display:inline-block;margin:4px 6px 0 0;padding:9px 14px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;font-size:13px}
+.sv-msg{font-size:12px;margin-top:6px;min-height:16px;color:#6b7280}
+
+/* ── Téléphone : en-têtes qui ne débordent plus ── */
+@media(max-width:639px){
+  .gp-header-inner{flex-wrap:wrap;height:auto;min-height:56px;padding:8px 12px;gap:8px}
+  .gp-logo{font-size:16px}
+  .gp-header-right{margin-left:auto;gap:6px}
+  .gp-search-wrap{order:3;flex:1 1 100%;max-width:none}
+  .gp-search{padding:9px 12px}
+  .gp-cart-btn{padding:8px 10px;font-size:12px}
+  #authBtn{padding:7px 10px;font-size:12px}
+  .gp-admin-link{padding:6px 8px}
+}
+@media(max-width:700px){
+  html body .adm-header{height:auto;min-height:56px;flex-wrap:wrap;gap:6px 10px;padding:8px 12px}
+  html body .adm-nav{width:100%;display:flex;gap:4px 16px;overflow-x:auto;white-space:nowrap;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+  html body .adm-nav a{margin-left:0;flex-shrink:0}
+}
