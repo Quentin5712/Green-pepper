@@ -17,6 +17,11 @@ const { global: globalLimit } = require('./src/middlewares/rateLimiters');
 const { startOfflineCron }    = require('./src/jobs/offlineCron');
 const { startDiscountExpiryCron } = require('./src/jobs/discountExpiryCron');
 const apiRoutes    = require('./src/routes/index');
+const kpayRoutes   = require('./src/routes/kpay');
+const uploadRoutes = require('./src/routes/upload');
+const adminSettingsRoutes = require('./src/routes/adminSettings');
+const { startPayoutCron } = require('./src/jobs/payoutCron');
+const kpayUtil     = require('./src/utils/kpay');
 
 const app     = express();
 const PORT    = process.env.PORT || 3000;
@@ -83,6 +88,10 @@ app.use(hpp());
 app.use(activityTracker);
 
 // ── API ──
+// Paiement KPay, photo de livraison, réglages admin (montés AVANT le routeur général)
+app.use('/api/kpay', kpayRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminSettingsRoutes);
 app.use('/api', apiRoutes);
 
 // ── Health check ──
@@ -115,7 +124,9 @@ process.on('SIGTERM', () => { logger.info('SIGTERM reçu'); process.exit(0); });
 process.on('SIGINT',  () => { logger.info('SIGINT reçu');  process.exit(0); });
 
 // ── Démarrage ──
-connectDB().then(() => {
+connectDB().then(async () => {
+  await kpayUtil.logStartupConfig();     // KPay MODE / merchantNumber / Source
+  startPayoutCron();
   startOfflineCron();
   startDiscountExpiryCron();
   app.listen(PORT, '0.0.0.0', () => {
