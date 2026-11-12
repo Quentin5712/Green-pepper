@@ -17,4 +17,8 @@ function safeUrl(u) {
   if (/^\/api\/images\/[a-f0-9]{24}$/.test(s)) return s;
   return /^(https?:\/\/|\/uploads\/)[^\s<>"'`]*$/.test(s) ? s.slice(0, 500) : '';
 }
-module.exports = { clean, EMAIL_RE, PHONE_RE, safeUrl };
+function safeHttpsUrl(u) {
+  const s = String(u || '').trim();
+  return /^https:\/\/[^\s<>"'`]+$/.test(s) ? s.slice(0, 1000) : '';
+}
+module.exports = { clean, EMAIL_RE, PHONE_RE, safeUrl, safeHttpsUrl };
