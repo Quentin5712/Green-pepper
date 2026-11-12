@@ -48,9 +48,6 @@ router.delete('/cart/:productId', verifyToken, cartCtrl.removeFromCart);
 router.delete('/cart',            verifyToken, cartCtrl.clearCart);
 
 // ── PAYMENT ──
-router.post('/payment/pay',                  limits.pay, optionalAuth, payCtrl.pay);
-router.post('/payment/callback',             payCtrl.callback);
-router.get ('/payment/status/:externalId',   payCtrl.getStatus);
 
 // ── ORDERS ──
 router.get('/orders',              verifyToken, payCtrl.getOrders);
@@ -107,8 +104,6 @@ router.get('/admin/audit',                      verifyAdmin, adminCtrl.getAudit)
 router.get('/admin/journal',                    verifyAdmin, adminCtrl.getJournalCsv);
 
 // ── ADMIN — Paramètres ──
-router.get('/admin/settings',                   verifyAdmin, adminCtrl.getSettings);
-router.put('/admin/settings',                   verifyAdmin, adminCtrl.updateSettings);
 
 // ── UPLOAD ──
 router.post('/upload',     limits.upload, verifyMerchant, upload, imageCtrl.create);
