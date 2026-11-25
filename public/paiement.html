@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Paiement — Marketplace Afrique</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="/images/favicon-64.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Montserrat:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/extra.css" rel="stylesheet">
+</head>
+<body style="background:#f3f4f6;min-height:100vh">
+<header class="gp-header">
+  <div class="gp-header-inner">
+    <a href="/" class="brand" aria-label="Marketplace Afrique — accueil"><img class="brand-mark" src="/images/logo-mark-96.png" alt="" width="40" height="40"><span class="brand-name"><b>MARKETPLACE</b><i>AFRIQUE</i></span></a>
+    <div style="flex:1"></div>
+    <a href="/" class="gp-admin-link">← Boutique</a>
+  </div>
+</header>
+
+<main class="pay-main">
+  <ol class="pay-steps"><li class="done">1 · Panier</li><li class="on" id="stepPay">2 · Paiement</li><li id="stepDone">3 · Confirmation</li></ol>
+
+  <div id="payEmpty" class="pay-card" style="display:none;text-align:center">
+    <h2>Votre panier est vide</h2><p class="pay-hint" style="margin-bottom:12px">Ajoutez des produits avant de payer.</p>
+    <a href="/" class="pay-btn2 fill">Retour à la boutique</a>
+  </div>
+
+  <div id="payGrid" class="pay-grid">
+    <section>
+      <div id="payPanel"></div>
+      <div id="payForm">
+        <div class="pay-card">
+          <h2>1. Vos coordonnées</h2>
+          <div class="pay-f"><label for="pName">Nom complet *</label><input id="pName" autocomplete="name" placeholder="Prénom et nom"></div>
+          <div class="pay-f"><label for="pPhone">Téléphone (WhatsApp ou Mobile Money) *</label><input id="pPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="6XX XXX XXX">
+            <span class="pay-hint" id="pPhoneHint">Pour MTN / Orange : le numéro du compte qui paie. Sinon : un numéro pour vous joindre.</span></div>
+          <div class="pay-f" id="pAddrBox"><label for="pAddr">Adresse de livraison *</label><textarea id="pAddr" rows="2" autocomplete="street-address" placeholder="Quartier, ville, pays"></textarea></div>
+        </div>
+        <div class="pay-card">
+          <h2>2. Moyen de paiement</h2>
+          <div class="pm-grid" id="pmGrid"></div>
+          <button type="button" class="pm-other" id="pmOther"><img src="/images/pay/mobile-money.svg" alt=""><span><b>Autre opérateur Mobile Money</b><small>Airtel, Moov, Free, M-Pesa… Gabon, Congo, Côte d'Ivoire, Sénégal, Bénin…</small></span></button>
+        </div>
+        <button id="payBtn" class="pay-go" disabled>Choisissez un moyen de paiement</button>
+        <p class="pay-secure">🔒 Paiement sécurisé. Nous ne conservons jamais votre code PIN ni les numéros de carte. Ne payez qu'une seule fois : la confirmation arrive toute seule.</p>
+      </div>
+    </section>
+    <aside class="pay-card pay-summary">
+      <h2>Votre commande</h2>
+      <div id="sumItems"></div>
+      <div class="pay-total"><span>Total</span><span class="amt" id="sumTotal">—</span></div>
+      <div class="pay-usdt-line" id="sumUsdt"></div>
+      <p class="pay-hint" style="margin-top:10px">Le prix final est confirmé par nos serveurs au moment du paiement. Produit physique : votre argent est conservé jusqu'à la réception confirmée par photo.</p>
+    </aside>
+  </div>
+</main>
+<div id="toastWrap" class="gp-toast-wrap"></div>
+<script src="/js/site-config.js"></script>
+<script src="/js/paiement.js"></script>
+<script src="/js/fab.js"></script>
+</body>
+</html>

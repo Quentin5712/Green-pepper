@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Administration — Green Pepper Market</title>
+  <title>Administration — Marketplace Afrique</title>
+  <link rel="icon" type="image/png" href="/images/favicon-64.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="/css/style.css" rel="stylesheet">
@@ -63,7 +64,7 @@
 </div>
 
 <header class="adm-header">
-  <span style="font-family:'Playfair Display',serif;font-size:18px">🌶️ Green Pepper — Admin</span>
+  <a href="/" class="brand" aria-label="Marketplace Afrique"><img class="brand-mark" src="/images/logo-mark-96.png" alt="" width="40" height="40"><span class="brand-name"><b>MARKETPLACE</b><i>AFRIQUE · ADMIN</i></span></a>
   <span id="modeBadge" class="mode-badge" style="display:none"></span>
   <nav class="adm-nav">
     <a onclick="switchTab('dashboard')">Dashboard</a>
@@ -73,6 +74,7 @@
     <a onclick="switchTab('products')">Produits</a>
     <a onclick="switchTab('orders')">Commandes</a>
     <a onclick="switchTab('payment')">Paiement</a>
+    <a onclick="switchTab('avis')">Avis</a>
     <a onclick="switchTab('audit')">Audit</a>
     <a href="/" style="margin-left:20px">← Site</a>
     <a onclick="doLogout()" style="color:#f97316">Déconnexion</a>
@@ -148,8 +150,20 @@
         <div class="f-group"><label>Téléphone Mobile Money (versement des ventes)</label><input id="mPhone" type="tel" class="f-inp" autocomplete="off"></div>
         <div class="f-group"><label>Mot de passe (majuscule au début)</label><input id="mPassword" type="text" class="f-inp" autocomplete="off"></div>
         <div class="f-group"><label>Durée du compte en jours (vide = illimité)</label><input id="mDays" type="number" min="1" class="f-inp"></div>
-        <div class="f-group"><label>WhatsApp (237XXXXXXXXX, affiché sur ses produits)</label><input id="mWhatsapp" class="f-inp" autocomplete="off" inputmode="numeric"></div>
-        <div class="f-group"><label>Opérateur de versement</label><select id="mProvider" class="f-inp"><option value="">Détecter automatiquement</option><option value="MTN_MOMO_CMR">MTN MoMo</option><option value="ORANGE_CMR">Orange Money</option></select></div>
+        <div class="f-group"><label>WhatsApp (affiché sur ses produits)</label><input id="mWhatsapp" class="f-inp" autocomplete="off" inputmode="numeric"></div>
+        <div class="f-group"><label>Pays du marchand *</label><select id="mCountry" class="f-inp" onchange="onCountryChange()"></select></div>
+        <div class="f-group"><label>Opérateur de versement</label><select id="mProvider" class="f-inp"></select></div>
+        <div class="f-group" style="grid-column:1/-1">
+          <label>Logo de la boutique (facultatif)</label>
+          <div class="up-box">
+            <img id="mLogoPreview" class="up-prev" alt="" style="display:none">
+            <label for="mLogoFile" class="up-btn">📷 Choisir le logo</label>
+            <input id="mLogoFile" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="onPickImage(this,'mLogo')">
+            <button type="button" id="mLogoClear" class="up-clear" style="display:none" onclick="clearImage('mLogo')">Retirer</button>
+          </div>
+          <span id="mLogoStatus" class="up-status"></span>
+          <input id="mLogo" type="hidden">
+        </div>
       </div>
       <button onclick="createMerchant()" class="f-btn" style="margin-top:14px">Créer le marchand</button>
     </div>
@@ -255,6 +269,17 @@
       <table>
         <thead><tr><th>Commande</th><th>Vendeur</th><th>Type</th><th>Part vendeur</th><th>Commission</th><th>Livraison</th><th>Versement</th><th>Actions</th></tr></thead>
         <tbody id="payoutsTable"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- AVIS : modération -->
+  <div id="tab-avis" style="display:none">
+    <p style="font-size:13px;color:#6b7280;margin-bottom:12px">Les avis sont publiés automatiquement (réservés aux clients ayant reçu leur commande). Masquez ceux qui sont abusifs.</p>
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Date</th><th>Client</th><th>Produit / boutique</th><th>Note</th><th>Avis</th><th>Photo</th><th>Statut</th><th>Action</th></tr></thead>
+        <tbody id="avisTable"><tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Chargement…</td></tr></tbody>
       </table>
     </div>
   </div>

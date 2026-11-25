@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Green Pepper Market — Cameroun</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌶️</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Marketplace Afrique — Des marchands de toute l’Afrique</title>
+  <meta name="description" content="Marketplace Afrique : achetez auprès de marchands de toute l’Afrique. Paiement Mobile Money, carte Visa/Mastercard ou USDT.">
+  <meta name="theme-color" content="#0b4a40">
+  <link rel="icon" type="image/png" href="/images/favicon-64.png">
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Montserrat:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <link href="/css/style.css" rel="stylesheet">
   <link href="/css/extra.css" rel="stylesheet">
 </head>
@@ -14,17 +16,17 @@
 
 <header id="header" class="gp-header">
   <div class="gp-header-inner">
-    <a href="/" class="gp-logo">🌶️ Green Pepper</a>
+    <a href="/" class="brand" aria-label="Marketplace Afrique — accueil">
+      <img class="brand-mark" src="/images/logo-mark-96.png" alt="" width="40" height="40">
+      <span class="brand-name"><b>MARKETPLACE</b><i>AFRIQUE</i></span>
+    </a>
     <div class="gp-search-wrap">
       <input id="searchInput" type="text" placeholder="Rechercher un produit…" class="gp-search" onkeydown="if(event.key==='Enter')doSearch()">
-      <button onclick="doSearch()" class="gp-search-btn">🔍</button>
+      <button onclick="doSearch()" class="gp-search-btn" aria-label="Rechercher">🔍</button>
     </div>
     <div class="gp-header-right">
-      <button onclick="toggleCart()" class="gp-cart-btn">
-        🛒 Panier
-        <span id="cartCount" class="gp-cart-badge" style="display:none">0</span>
-      </button>
-      <a href="/suivi.html" class="gp-admin-link" title="Suivre mes commandes">Suivi</a>
+      <button onclick="toggleCart()" class="gp-cart-btn">🛒 Panier <span id="cartCount" class="gp-cart-badge" style="display:none">0</span></button>
+      <a href="/suivi.html" class="gp-admin-link hdr-suivi" title="Suivre mes commandes">Suivi</a>
       <a href="/login.html" id="authBtn" style="display:inline-flex">Connexion</a>
       <button id="avatarBtn" onclick="toggleUserMenu()" title="Mon compte"></button>
     </div>
@@ -37,84 +39,87 @@
 <div id="userMenu" style="display:none;position:fixed;top:66px;right:12px;background:#fff;color:#111827;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;min-width:200px;z-index:150">
   <div id="umName" style="padding:8px 12px;font-size:12px;font-weight:700;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:4px"></div>
   <a id="umSpace" href="#" style="display:none;padding:10px 12px;font-size:13px;font-weight:600;color:#16a34a;border-radius:8px">Mon espace</a>
+  <a href="/suivi.html" style="display:block;padding:10px 12px;font-size:13px;border-radius:8px">Suivi de commande</a>
   <button onclick="doLogout()" style="display:block;width:100%;text-align:left;padding:10px 12px;font-size:13px;color:#ef4444;background:none;border:none;cursor:pointer;border-radius:8px">Déconnexion</button>
 </div>
 
 <section class="gp-hero">
   <div class="gp-hero-content">
-    <p class="gp-hero-tag">🌶️ Marché Camerounais</p>
-    <h1 class="gp-hero-title">Produits frais<br><em>livrés chez vous</em></h1>
-    <p class="gp-hero-sub">MTN MoMo · Orange Money · Livraison Yaoundé & Douala</p>
+    <p class="gp-hero-tag">Marketplace Afrique</p>
+    <h1 class="gp-hero-title">Des marchands de toute l’Afrique,<br><em>à portée de clic</em></h1>
+    <p class="gp-hero-sub">Mobile Money · Carte Visa / Mastercard · USDT<br>Paiement sécurisé : le vendeur n’est payé qu’à la réception.</p>
     <button onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})" class="gp-hero-btn">Explorer →</button>
   </div>
 </section>
 
+<section id="promoSection" class="gp-promos" style="display:none" aria-label="Promotions">
+  <div class="gp-promo-head"><h2 class="gp-promo-title">🔥 Promotions</h2><span class="gp-promo-sub">Offres à durée limitée</span></div>
+  <div id="promoRow" class="gp-promo-row"></div>
+</section>
+
 <main class="gp-main" id="products">
   <div class="gp-section-header">
-    <h2 class="gp-section-title" id="productsTitle">Nos produits</h2>
+    <h2 class="gp-section-title" id="productsTitle">Catégories</h2>
     <span id="productsCount" class="gp-section-count"></span>
   </div>
   <div id="backRow" style="display:none;margin-bottom:14px"><button onclick="showCategories()" class="gp-back-btn">← Toutes les catégories</button></div>
   <div id="catsGrid" class="gp-cat-cards"></div>
   <div id="productsGrid" class="gp-products-grid" style="display:none"></div>
-  <div id="productsLoader" class="gp-loader">Chargement des produits…</div>
-  <div id="productsEmpty" class="gp-empty" style="display:none">Aucun produit trouvé.</div>
+  <div id="productsLoader" class="gp-loader">Chargement…</div>
+  <div id="productsEmpty" class="gp-empty" style="display:none">Aucun produit pour le moment.</div>
 </main>
 
-<!-- PANIER SLIDE-OVER -->
+<footer class="gp-footer">
+  <div class="gp-footer-in">
+    <div>
+      <a href="/" class="brand" style="margin-bottom:10px"><img class="brand-mark" src="/images/logo-mark-96.png" alt="" width="40" height="40"><span class="brand-name"><b>MARKETPLACE</b><i>AFRIQUE</i></span></a>
+      <p>Des marchands de toute l’Afrique réunis sur une seule boutique. Paiement protégé : l’argent n’est versé au vendeur qu’après réception.</p>
+    </div>
+    <div>
+      <h4>Informations</h4>
+      <a href="/legal/cgv.html">Conditions générales de vente</a>
+      <a href="/legal/remboursement.html">Politique de remboursement</a>
+      <a href="/legal/livraison-retours.html">Livraison &amp; retours</a>
+      <a href="/legal/confidentialite.html">Politique de confidentialité</a>
+    </div>
+    <div>
+      <h4>Aide</h4>
+      <a href="/suivi.html">Suivre ma commande</a>
+      <a href="/avis.html">Avis clients</a>
+      <span id="ftSupport"></span>
+    </div>
+    <div>
+      <h4>Paiements acceptés</h4>
+      <div class="pay-logos">
+        <img src="/images/pay/mtn.svg" alt="MTN MoMo"><img src="/images/pay/orange.svg" alt="Orange Money"><img src="/images/pay/airtel.svg" alt="Airtel Money">
+        <img src="/images/pay/visa.svg" alt="Visa"><img src="/images/pay/mastercard.svg" alt="Mastercard"><img src="/images/pay/usdt.svg" alt="USDT TRC20">
+      </div>
+    </div>
+  </div>
+  <div class="gp-copy">© <span id="ftYear"></span> Marketplace Afrique. Tous droits réservés.</div>
+</footer>
+
+<!-- PANIER -->
 <div id="cartOverlay" class="gp-cart-overlay" style="display:none" onclick="toggleCart()"></div>
 <aside id="cartPanel" class="gp-cart-panel">
-  <div class="gp-cart-header">
-    <h3>🛒 Mon panier</h3>
-    <button onclick="toggleCart()" class="gp-cart-close">✕</button>
-  </div>
+  <div class="gp-cart-header"><h3>🛒 Mon panier</h3><button onclick="toggleCart()" class="gp-cart-close" aria-label="Fermer">✕</button></div>
   <div id="cartItems" class="gp-cart-items"></div>
   <div class="gp-cart-footer">
     <div id="cartSummary"></div>
-    <button onclick="openCheckout()" id="checkoutBtn" class="gp-checkout-btn" style="display:none">Passer commande →</button>
+    <button onclick="goCheckout()" id="checkoutBtn" class="gp-checkout-btn" style="display:none">Passer au paiement →</button>
   </div>
 </aside>
 
-<!-- CHECKOUT MODAL -->
-<div id="checkoutOverlay" class="gp-modal-overlay" style="display:none" onclick="closeCheckout()"></div>
-<div id="checkoutModal" class="gp-modal" style="display:none">
-  <div class="gp-modal-header">
-    <h3>Finaliser ma commande</h3>
-    <button onclick="closeCheckout()" class="gp-modal-close">✕</button>
-  </div>
-  <div class="gp-modal-body">
-    <div id="checkoutRecap" class="gp-checkout-recap"></div>
-    <div class="gp-form-group">
-      <label>Votre nom</label>
-      <input id="ckName" type="text" placeholder="Ex: Marie Nguemdjou" class="gp-input">
-    </div>
-    <div class="gp-form-group">
-      <label>Numéro Mobile Money *</label>
-      <input id="ckPhone" type="tel" placeholder="Ex: 655 123 456" class="gp-input">
-    </div>
-    <div class="gp-form-group">
-      <label>Localisation de livraison *</label>
-      <input id="ckLocation" type="text" placeholder="Ex: Bastos, Yaoundé" class="gp-input">
-    </div>
-    <div class="gp-form-group">
-      <label>Opérateur de paiement *</label>
-      <div class="gp-operators">
-        <button onclick="selectOp('MTN_MOMO_CMR')" id="opMTN" class="gp-op-btn">
-          <span>🟡</span><span>MTN MoMo</span>
-        </button>
-        <button onclick="selectOp('ORANGE_CMR')" id="opORANGE" class="gp-op-btn">
-          <span>🟠</span><span>Orange Money</span>
-        </button>
-      </div>
-    </div>
-    <button onclick="submitPayment()" id="payBtn" class="gp-pay-btn" disabled>
-      Payer via Mobile Money
-    </button>
-    <p id="payMsg" class="gp-pay-msg" style="display:none"></p>
-  </div>
+<!-- DÉTAIL PRODUIT -->
+<div id="pdOverlay" class="pd-overlay" onclick="closeProduct()"></div>
+<div id="pdModal" class="pd-modal" role="dialog" aria-modal="true" aria-label="Détail du produit">
+  <button class="pd-close" onclick="closeProduct()" aria-label="Fermer">✕</button>
+  <div id="pdBody"></div>
 </div>
 
 <div id="toastWrap" class="gp-toast-wrap"></div>
+<script src="/js/site-config.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/fab.js"></script>
 </body>
 </html>

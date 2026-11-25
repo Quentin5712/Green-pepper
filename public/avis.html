@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Avis clients — Marketplace Afrique</title>
+  <link rel="icon" type="image/png" href="/images/favicon-64.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Montserrat:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/extra.css" rel="stylesheet">
+</head>
+<body style="background:#f3f4f6;min-height:100vh">
+<header class="gp-header">
+  <div class="gp-header-inner">
+    <a href="/" class="brand" aria-label="Marketplace Afrique — accueil"><img class="brand-mark" src="/images/logo-mark-96.png" alt="" width="40" height="40"><span class="brand-name"><b>MARKETPLACE</b><i>AFRIQUE</i></span></a>
+    <div style="flex:1"></div>
+    <a href="/" class="gp-admin-link">← Boutique</a>
+  </div>
+</header>
+<main class="av-main">
+  <h1 class="av-title">Avis clients</h1>
+  <p class="pay-hint">Des avis authentiques : seuls les clients qui ont reçu leur commande peuvent en publier un.</p>
+
+  <div class="av-sum" id="avSum" style="display:none">
+    <div><div class="av-big" id="avAvg">—</div><div class="gp-card-stars" id="avStars"></div><div class="pay-hint" id="avCount"></div></div>
+    <div class="av-bars" id="avBars"></div>
+  </div>
+  <div id="avFilter" class="pay-hint" style="display:none;margin-bottom:8px"></div>
+
+  <div id="avForm" class="av-form" style="display:none">
+    <h2 style="font-size:17px;font-weight:800;margin-bottom:10px">Donner mon avis</h2>
+    <div class="pay-f"><label for="avOrder">Ma commande reçue *</label><select id="avOrder" class="pay-f" style="padding:12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:16px"></select></div>
+    <div class="pay-f" id="avProdBox"><label for="avProduct">Produit *</label><select id="avProduct" style="padding:12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:16px"></select></div>
+    <div class="pay-f"><label>Ma note *</label><div class="av-stars" id="avStarsIn" role="radiogroup" aria-label="Note de 1 à 5"></div></div>
+    <div class="av-two">
+      <div class="pay-f"><label for="avFirst">Prénom *</label><input id="avFirst" autocomplete="given-name" maxlength="40"></div>
+      <div class="pay-f"><label for="avLast">Nom *</label><input id="avLast" autocomplete="family-name" maxlength="40"></div>
+    </div>
+    <div class="pay-f"><label for="avLoc">Localisation (ville, pays) *</label><input id="avLoc" placeholder="Ex : Dakar, Sénégal" maxlength="80"></div>
+    <div class="pay-f"><label for="avText">Mon avis *</label><textarea id="avText" rows="4" maxlength="1000" placeholder="Racontez votre expérience : produit, livraison, vendeur…"></textarea><span class="pay-hint">10 caractères minimum.</span></div>
+    <div class="pay-f"><label>Photo du produit reçu (facultative)</label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label for="avPhoto" class="up-btn" style="cursor:pointer">📷 Ajouter une photo</label>
+        <input id="avPhoto" type="file" accept="image/jpeg,image/png,image/webp" style="display:none">
+        <img id="avPrev" class="up-prev" alt="" style="display:none">
+        <button type="button" id="avPhotoClear" class="up-clear" style="display:none">Retirer</button>
+      </div></div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:6px 0 12px"><input type="checkbox" id="avConsent" style="margin-top:3px"><span>J'accepte que mon prénom, mon nom, ma localisation, mon avis et ma photo soient <b>publiés</b> sur le site.</span></label>
+    <button id="avSend" class="pay-go">Publier mon avis</button>
+    <p id="avMsg" class="pay-hint" style="margin-top:8px;min-height:16px"></p>
+  </div>
+  <div id="avNoOrder" class="pay-panel info" style="display:none">
+    <h3>Donner mon avis</h3>
+    <div>Vous pourrez publier un avis dès que vous aurez <b>reçu votre commande</b> (produit physique : après la confirmation de réception ; produit digital : après le paiement). Retrouvez vos commandes dans « Suivi ».</div>
+    <div class="pay-actions"><a class="pay-btn2 fill" href="/suivi.html">Mes commandes</a><a class="pay-btn2" href="/">Boutique</a></div>
+  </div>
+
+  <h2 style="font-size:17px;font-weight:800;margin:22px 0 10px">Ce que disent nos clients</h2>
+  <div id="avList"></div>
+  <button id="avMore" class="pay-btn2" style="display:none;margin-top:6px">Voir plus d'avis</button>
+  <div id="avEmpty" class="pay-hint" style="display:none">Aucun avis pour le moment. Soyez le premier à en publier un !</div>
+</main>
+<div id="toastWrap" class="gp-toast-wrap"></div>
+<script src="/js/site-config.js"></script>
+<script src="/js/shared.js"></script>
+<script src="/js/avis.js"></script>
+<script src="/js/fab.js"></script>
+</body>
+</html>
