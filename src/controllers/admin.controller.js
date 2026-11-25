@@ -1,6 +1,7 @@
 'use strict';
 const crypto   = require('crypto');
-const { clean, EMAIL_RE, PHONE_RE } = require('../utils/clean');
+const { clean, EMAIL_RE, PHONE_RE, safeUrl } = require('../utils/clean');
+const { isCountry, providerInfo, toIntlPhone, INTL_RE } = require('../utils/countries');
 const bcrypt   = require('bcryptjs');
 const Settings = require('../models/Settings');
 const jwt      = require('jsonwebtoken');
@@ -59,7 +60,7 @@ async function adminLogin(req, res) {
     let admin = await User.findOne({ role: 'admin', isDeleted: false });
     if (!admin) {
       const hashed = await bcrypt.hash(password, 12);
-      admin = new User({ name: username.charAt(0).toUpperCase() + username.slice(1), email: `${username}@greenpeppermarket.cm`, password: hashed, role: 'admin' });
+      admin = new User({ name: username.charAt(0).toUpperCase() + username.slice(1), email: `${username}@admin.local`, password: hashed, role: 'admin' });
       await admin.save();
     }
 
@@ -328,21 +329,29 @@ async function createMerchant(req, res) {
     if (!name || !storeName || !email || !password) return res.status(400).json({ error: 'Nom, boutique, e-mail et mot de passe requis' });
     if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Adresse e-mail invalide' });
     if (!phone || !PHONE_RE.test(phone)) return res.status(400).json({ error: 'Téléphone Mobile Money du marchand requis (c\'est là que ses ventes seront versées)' });
-    const whatsapp = String(req.body.whatsapp || '').replace(/\s+/g, '');
-    if (whatsapp && !/^237[0-9]{9}$/.test(whatsapp)) return res.status(400).json({ error: 'WhatsApp invalide : mets 237XXXXXXXXX' });
-    const payoutProvider = ['MTN_MOMO_CMR', 'ORANGE_CMR'].includes(req.body.payoutProvider) ? req.body.payoutProvider : '';
+    const country = String(req.body.country || 'CMR').toUpperCase();
+    if (!isCountry(country)) return res.status(400).json({ error: 'Pays invalide' });
+    const phoneIntl = toIntlPhone(phone, country);
+    if (!INTL_RE.test(phoneIntl)) return res.status(400).json({ error: 'Numéro Mobile Money invalide' });
+    const whatsappRaw = String(req.body.whatsapp || '').replace(/\s+/g, '');
+    const whatsapp = whatsappRaw ? toIntlPhone(whatsappRaw, country) : '';
+    if (whatsapp && !INTL_RE.test(whatsapp)) return res.status(400).json({ error: 'WhatsApp invalide : indicatif du pays + numéro' });
+    const payoutProvider = String(req.body.payoutProvider || '');
+    if (payoutProvider && (!providerInfo(payoutProvider) || providerInfo(payoutProvider).country !== country)) return res.status(400).json({ error: 'Cet opérateur n\'existe pas dans le pays choisi' });
+    if (!payoutProvider && country !== 'CMR') return res.status(400).json({ error: 'Choisissez l\'opérateur de versement du marchand' });
+    const logoUrl = safeUrl(req.body.logoUrl);
     if (password.length < 6 || !/^[A-Z]/.test(password)) return res.status(400).json({ error: 'Mot de passe : 6 caractères minimum, première lettre en majuscule' });
     if (await User.findOne({ email })) return res.status(409).json({ error: 'Cet e-mail est déjà utilisé' });
 
     const expiresAt = days > 0 ? new Date(Date.now() + Math.min(days, 3650) * 86400000) : undefined;
-    const user = await User.create({ name, email, phone, password, role: 'merchant', storeName, expiresAt, whatsapp, payoutProvider });
-    const shop = await Shop.create({ name: storeName, ownerId: user._id, phone });
+    const user = await User.create({ name, email, phone: phoneIntl, country, password, role: 'merchant', storeName, expiresAt, whatsapp, payoutProvider });
+    const shop = await Shop.create({ name: storeName, ownerId: user._id, phone: phoneIntl, country, logoUrl });
     user.shopId = shop._id;
     await user.save();
 
     await AuditLog.create({ adminId: req.user.id, action: 'CREATE_MERCHANT', targetId: String(user._id), details: { email, storeName, expiresAt }, ip: req.ip });
     logger.info(`CREATE_MERCHANT: ${email} shop=${shop._id} ip=${req.ip}`);
-    res.status(201).json({ success: true, merchant: { id: user._id, name, email, storeName, shopId: shop._id, expiresAt } });
+    res.status(201).json({ success: true, merchant: { id: user._id, name, email, storeName, shopId: shop._id, country, logoUrl, expiresAt } });
   } catch(e) { logger.error('createMerchant:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
 }
 

@@ -2,15 +2,28 @@
 const Product = require('../models/Product');
 const { clean, safeUrl, safeHttpsUrl } = require('../utils/clean');
 const User = require('../models/User');
+const Shop = require('../models/Shop');
+
+// Prix affiché : la réduction n'apparaît que si elle est encore valable. (.lean() ne calcule pas les champs virtuels : on le fait ici)
+function priceInfo(p) {
+  const active = p.discount > 0 && p.discountExpiresAt && new Date(p.discountExpiresAt) > new Date();
+  const finalPrice = active ? Math.round(p.price * (1 - p.discount / 100)) : p.price;
+  return { finalPrice, discountActive: !!active, discountPercent: active ? p.discount : 0, discountExpiresAt: active ? p.discountExpiresAt : null, savings: p.price - finalPrice };
+}
 
 // Ajoute le WhatsApp (237 + 9 chiffres) et le nom de la boutique du vendeur ; le lien digital n'est JAMAIS exposé ici
 async function withSeller(list) {
   const ids = [...new Set(list.map(p => String(p.sellerId)).filter(x => /^[a-f0-9]{24}$/.test(x)))];
-  const users = ids.length ? await User.find({ _id: { $in: ids }, isDeleted: false }).select('whatsapp storeName name').lean() : [];
+  const users = ids.length ? await User.find({ _id: { $in: ids }, isDeleted: false }).select('whatsapp storeName name shopId country').lean() : [];
   const by = {}; users.forEach(u => { by[String(u._id)] = u; });
+  const shopIds = [...new Set([...list.map(p => p.shopId), ...users.map(u => u.shopId)].filter(Boolean).map(String))];
+  const shops = shopIds.length ? await Shop.find({ _id: { $in: shopIds } }).select('name logoUrl country').lean() : [];
+  const sh = {}; shops.forEach(x => { sh[String(x._id)] = x; });
   list.forEach(p => {
     const u = by[String(p.sellerId)];
-    p.sellerWhatsapp = u && /^237[0-9]{9}$/.test(u.whatsapp || '') ? u.whatsapp : '';
+    p.sellerWhatsapp = u && /^[1-9][0-9]{7,14}$/.test(u.whatsapp || '') ? u.whatsapp : '';
+    const shop = sh[String(p.shopId || (u && u.shopId) || '')];
+    p.shop = shop ? { name: shop.name, logoUrl: shop.logoUrl || '', country: shop.country || '' } : (u && u.storeName ? { name: u.storeName, logoUrl: '', country: u.country || '' } : null);
     p.storeName = u ? (u.storeName || u.name || '') : '';
   });
   return list;
@@ -37,6 +50,7 @@ async function getAll(req, res) {
     if (category) filter.category = new RegExp('^' + escRe(san(category)) + '$', 'i');
     if (shopId)   filter.shopId   = shopId;
     if (sellerId) filter.sellerId = san(String(sellerId));
+    if (req.query.promo === '1') { filter.discount = { $gt: 0 }; filter.discountExpiresAt = { $gt: new Date() }; }       // section « Promotions »
     if (q)        filter.$text    = { $search: san(q) };
     if (minPrice || maxPrice) { filter.price={}; if(minPrice) filter.price.$gte=Number(minPrice); if(maxPrice) filter.price.$lte=Number(maxPrice); }
     const [products, total] = await Promise.all([
@@ -44,6 +58,7 @@ async function getAll(req, res) {
       Product.countDocuments(filter),
     ]);
     await withSeller(products);
+    products.forEach(p => Object.assign(p, priceInfo(p)));
     res.json({ products, total, page:Number(page), pages:Math.ceil(total/Number(limit)) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 }
@@ -53,6 +68,7 @@ async function getOne(req, res) {
     const p = await Product.findOne({ _id:req.params.id, isDeleted:false }).lean({ virtuals:true });
     if (!p || !p.isActive) return res.status(404).json({ error:'Produit introuvable' });
     await withSeller([p]);
+    Object.assign(p, priceInfo(p));
     res.json(p);
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
