@@ -45,29 +45,29 @@ async function uploadImage(file) {
   return d.url;
 }
 
-function setImgPreview(url) {
-  const im = document.getElementById('pImgPreview'), clr = document.getElementById('pImgClear');
+function setImgPreview(url, base = 'pImg') {
+  const im = document.getElementById(base + 'Preview'), clr = document.getElementById(base + 'Clear');
   if (!im) return;
   im.onerror = () => { im.style.display = 'none'; };
   if (url) { im.src = url; im.style.display = 'block'; } else { im.removeAttribute('src'); im.style.display = 'none'; }
   if (clr) clr.style.display = url ? 'inline-block' : 'none';
 }
 
-function clearImage() {
-  const f = document.getElementById('pImg'); if (f) f.value = '';
-  setImgPreview('');
-  const st = document.getElementById('pImgStatus'); if (st) st.textContent = '';
+function clearImage(base = 'pImg') {
+  const f = document.getElementById(base); if (f) f.value = '';
+  setImgPreview('', base);
+  const st = document.getElementById(base + 'Status'); if (st) st.textContent = '';
 }
 
-async function onPickImage(input) {
+async function onPickImage(input, base = 'pImg') {
   const file = input.files && input.files[0]; if (!file) return;
-  const st = document.getElementById('pImgStatus');
+  const st = document.getElementById(base + 'Status');
   const say = (t, ok) => { if (st) { st.textContent = t; st.style.color = ok === false ? '#dc2626' : ok ? '#16a34a' : '#6b7280'; } };
   say('⏳ Préparation et envoi de la photo…');
   try {
     const url = await uploadImage(file);
-    const f = document.getElementById('pImg'); if (f) f.value = url;
-    setImgPreview(url);
+    const f = document.getElementById(base); if (f) f.value = url;
+    setImgPreview(url, base);
     say('✅ Photo ajoutée. Cliquez sur « Enregistrer » pour finir.', true);
   } catch(e) { say('❌ ' + e.message, false); }
   finally { input.value = ''; }

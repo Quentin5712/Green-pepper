@@ -1,6 +1,6 @@
 'use strict';
 // ══════════════════════════════════════════════
-// admin.js — Green Pepper Market
+// admin.js — Marketplace Afrique
 // Polling 10s pour les connectés
 // Impersonate marchand
 // CRUD produits, réductions, audit
@@ -61,6 +61,8 @@ function switchTab(tab) {
   if (tab === 'products')  loadProducts();
   if (tab === 'orders')    loadOrders();
   if (tab === 'audit')     loadAudit();
+  if (tab === 'avis')      loadAvis();
+  if (tab === 'shops')     initShopForm();
   if (tab === 'payment')   loadPaymentTab();
 }
 
@@ -179,7 +181,7 @@ async function loadShops() {
     const shops = d.shops || [];
     if (!shops.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Aucune boutique.</td></tr>'; return; }
     tbody.innerHTML = shops.map(s => `<tr>
-      <td style="font-weight:600">${s.name}</td>
+      <td style="font-weight:600;white-space:nowrap">${s.logoUrl ? `<img src="${esc(s.logoUrl)}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid #e5e7eb">` : ""}${esc(s.name)} <span style="font-size:10px;color:#6b7280;font-weight:600">${esc(s.country || "")}</span></td>
       <td style="font-size:12px">${s.ownerId?.name || '—'}<br><span style="color:#9ca3af;font-size:11px">${s.ownerId?.email||''}</span></td>
       <td><span style="background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700">${s.category||'—'}</span></td>
       <td><span class="${s.kycStatus==='VERIFIED'?'pill pill-valide':'pill pill-pending'}">${s.kycStatus}</span></td>
@@ -434,13 +436,14 @@ async function downloadFile(url, filename) {
 
 async function createMerchant() {
   const val = id => (document.getElementById(id)?.value || '').trim();
-  const body = { name: val('mName'), email: val('mEmail'), phone: val('mPhone'), whatsapp: val('mWhatsapp'), payoutProvider: document.getElementById('mProvider')?.value || '', password: document.getElementById('mPassword')?.value || '', storeName: val('mStore'), days: Number(val('mDays')) || 0 };
+  const body = { name: val('mName'), email: val('mEmail'), phone: val('mPhone'), whatsapp: val('mWhatsapp'), country: document.getElementById('mCountry')?.value || 'CMR', logoUrl: document.getElementById('mLogo')?.value || '', payoutProvider: document.getElementById('mProvider')?.value || '', password: document.getElementById('mPassword')?.value || '', storeName: val('mStore'), days: Number(val('mDays')) || 0 };
   if (!body.name || !body.email || !body.password || !body.storeName) { toast('Nom, boutique, e-mail et mot de passe requis', 'err'); return; }
   try {
     const r = await api('/admin/merchants', { method: 'POST', body: JSON.stringify(body) });
     const d = await r.json();
     if (!r.ok) { toast(d.error || 'Erreur', 'err'); return; }
-    ['mName','mEmail','mPhone','mPassword','mStore','mDays','mWhatsapp','mProvider'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    ['mName','mEmail','mPhone','mPassword','mStore','mDays','mWhatsapp'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    clearImage('mLogo'); onCountryChange();
     toast('Marchand créé ✅ — donnez-lui son e-mail et son mot de passe');
     loadShops();
   } catch(e) { toast('Erreur réseau', 'err'); }
@@ -551,6 +554,43 @@ async function editPayout(id) {
     const d = await r.json();
     toast(r.ok ? 'Numéro de versement enregistré ✅' : (d.error || 'Erreur'), r.ok ? 'ok' : 'err');
   } catch(e) { toast('Erreur réseau', 'err'); }
+}
+
+// ═══════════ Boutique : pays → opérateurs de versement ═══════════
+let PAYCFG = null;
+async function initShopForm() {
+  const sel = document.getElementById('mCountry'); if (!sel || sel.options.length) return;
+  try { PAYCFG = await (await fetch('/api/pay/config')).json(); } catch(e) { PAYCFG = { countries: [] }; }
+  (PAYCFG.countries || []).forEach(c => { const o = document.createElement('option'); o.value = c.iso; o.textContent = c.flag + ' ' + c.name; sel.appendChild(o); });
+  sel.value = 'CMR'; onCountryChange();
+}
+function onCountryChange() {
+  const iso = document.getElementById('mCountry')?.value || 'CMR', sp = document.getElementById('mProvider'); if (!sp || !PAYCFG) return;
+  const c = (PAYCFG.countries || []).find(x => x.iso === iso); sp.textContent = '';
+  if (iso === 'CMR') { const o = document.createElement('option'); o.value = ''; o.textContent = 'Détecter automatiquement'; sp.appendChild(o); }
+  ((c && c.providers) || []).forEach(p => { const o = document.createElement('option'); o.value = p.code; o.textContent = p.label; sp.appendChild(o); });
+}
+
+// ═══════════ Avis : modération ═══════════
+async function loadAvis() {
+  const tb = document.getElementById('avisTable'); if (!tb) return;
+  try {
+    const d = await (await api('/admin/avis')).json(); const rows = d.reviews || [];
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">Aucun avis pour l\'instant.</td></tr>'; return; }
+    tb.innerHTML = rows.map(a => `<tr>
+      <td style="font-size:11px;color:#9ca3af;white-space:nowrap">${esc(fmtDate(a.createdAt))}</td>
+      <td style="font-weight:600">${esc(a.firstName)} ${esc(a.lastName)}<div style="font-size:11px;color:#6b7280;font-weight:400">${esc(a.location)}</div></td>
+      <td style="font-size:12px">${esc(a.productName)}<div style="font-size:11px;color:#6b7280">${esc(a.shopName)}</div></td>
+      <td style="color:#c8a95f;font-weight:800">${'★'.repeat(a.rating)}${'☆'.repeat(5 - a.rating)}</td>
+      <td style="font-size:12px;max-width:240px">${esc(a.comment)}</td>
+      <td>${/^\/api\/images\/[a-f0-9]{24}$/.test(a.photoUrl || '') ? `<a href="${esc(a.photoUrl)}" target="_blank" rel="noopener noreferrer"><img src="${esc(a.photoUrl)}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover"></a>` : '—'}</td>
+      <td><span class="pill ${a.status === 'PUBLISHED' ? 'pill-valide' : 'pill-offline'}">${a.status === 'PUBLISHED' ? 'Publié' : 'Masqué'}</span></td>
+      <td><button class="action-btn ${a.status === 'PUBLISHED' ? 'btn-del' : 'btn-kyc'}" onclick="setAvisStatus('${esc(a.id)}','${a.status === 'PUBLISHED' ? 'HIDDEN' : 'PUBLISHED'}')">${a.status === 'PUBLISHED' ? 'Masquer' : 'Republier'}</button></td>
+    </tr>`).join('');
+  } catch(e) { tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444">Erreur</td></tr>'; }
+}
+async function setAvisStatus(id, status) {
+  try { const r = await api('/admin/avis/' + id, { method: 'PUT', body: JSON.stringify({ status }) }); toast(r.ok ? (status === 'HIDDEN' ? 'Avis masqué' : 'Avis republié') : 'Erreur', r.ok ? 'ok' : 'err'); loadAvis(); } catch(e) { toast('Erreur réseau', 'err'); }
 }
 
 // ── INIT ──

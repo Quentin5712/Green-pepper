@@ -67,18 +67,25 @@ function renderCard(st, ref, card) {
   card.append(h('div', { class: 'sv-items' }, (st.items || []).map(i => i.name + ' ×' + i.qty).join(', ')),
               h('div', { class: 'sv-amount' }, fmt(st.finalAmount)));
 
-  if (st.status === 'PENDING') { card.append(h('div', { class: 'sv-box' }, 'Validez le paiement sur votre téléphone (MTN : *126#). Cette page se met à jour toute seule.')); return; }
+  if (st.status === 'PENDING') {
+    if (st.paymentMethod === 'USDT' && st.crypto && st.crypto.address) {
+      card.append(h('div', { class: 'sv-box info' }, 'Envoyez exactement ', h('b', {}, st.crypto.amount + ' USDT'), ' (réseau TRC20) à l\'adresse :', h('div', { style: 'word-break:break-all;font-family:monospace;font-weight:700;margin:6px 0' }, st.crypto.address),
+        st.crypto.status === 'partially_paid' ? h('div', { style: 'color:#b45309;font-weight:700' }, 'Montant incomplet : reçu ' + st.crypto.actuallyPaid + ' USDT. Envoyez le complément à la même adresse.') : 'Cette page se met à jour toute seule.'));
+    } else if (st.paymentMethod === 'GATEWAY') card.append(h('div', { class: 'sv-box' }, 'Paiement en cours sur la page sécurisée. Si vous l\'avez terminé, patientez quelques instants : cette page se met à jour toute seule.'));
+    else card.append(h('div', { class: 'sv-box' }, 'Validez le paiement sur votre téléphone (MTN : *126#). Cette page se met à jour toute seule.'));
+    return;
+  }
   if (st.status === 'REFUSÉ' || st.status === 'EXPIRED') { card.append(h('div', { class: 'sv-box warn' }, 'Ce paiement n\'a pas abouti : aucun montant n\'a été conservé. Vous pouvez recommander.')); return; }
 
   if (st.orderType === 'digital') {
     const links = (st.digitalLinks || []).filter(l => /^https:\/\//.test(l.url));
     card.append(h('div', { class: 'sv-box ok' }, links.length ? 'Paiement confirmé. Vos téléchargements :' : 'Paiement confirmé. Le lien n\'est pas disponible : contactez le vendeur.',
-      h('div', {}, links.map(l => h('a', { class: 'sv-dl', href: l.url, target: '_blank', rel: 'noopener noreferrer' }, '⬇ ' + l.name)))));
+      h('div', {}, links.map(l => h('a', { class: 'sv-dl', href: l.url, target: '_blank', rel: 'noopener noreferrer' }, '⬇ ' + l.name))), h('div', { class: 'sv-actions' }, h('a', { class: 'sv-btn ghost', href: '/avis.html?ref=' + encodeURIComponent(ref.kpayId) + '#donner', style: 'text-decoration:none;border-color:#c8a95f;color:#0b4a40' }, '⭐ Donner mon avis'))));
     return;
   }
 
   // ── Produit physique ──
-  if (st.status === 'LIVRÉ' || st.deliveryStatus === 'VALIDATED') { card.append(h('div', { class: 'sv-box ok' }, '📸 Livraison validée par photo. Merci ! Le versement au vendeur est lancé.')); return; }
+  if (st.status === 'LIVRÉ' || st.deliveryStatus === 'VALIDATED') { card.append(h('div', { class: 'sv-box ok' }, '📸 Livraison validée par photo. Merci ! Le versement au vendeur est lancé.', h('div', { class: 'sv-actions' }, h('a', { class: 'sv-btn primary', href: '/avis.html?ref=' + encodeURIComponent(ref.kpayId) + '#donner', style: 'text-decoration:none' }, '⭐ Donner mon avis')))); return; }
   if (st.deliveryStatus === 'DISPUTE')    { card.append(h('div', { class: 'sv-box warn' }, '⚠️ Litige en cours : le vendeur n\'est pas payé tant que l\'équipe n\'a pas tranché.')); return; }
   if (st.deliveryStatus === 'REFUND_DUE') { card.append(h('div', { class: 'sv-box info' }, 'Litige tranché en votre faveur : un remboursement va vous être fait.')); return; }
   if (st.deliveryStatus !== 'AWAITING') return;
@@ -123,7 +130,7 @@ async function refreshCard(ref, card) {
 
 async function init() {
   const list = $('svList'); const refs = new Map();
-  try { JSON.parse(localStorage.getItem('gp_orders') || '[]').forEach(o => { if (o && o.kpayId) refs.set(o.kpayId, { kpayId: o.kpayId, token: o.token, orderNumber: o.orderNumber }); }); } catch (e) {}
+  try { JSON.parse(localStorage.getItem('gp_orders') || '[]').forEach(o => { if (o && o.kpayId) refs.set(o.kpayId, { kpayId: o.kpayId, token: o.token, orderNumber: o.orderNumber, externalId: o.externalId }); }); } catch (e) {}
   if (TOKEN) {                                               // compte connecté : on retrouve aussi ses commandes d'un autre appareil
     try {
       const r = await api('/api/kpay/my-orders'); const d = await r.json();
@@ -131,7 +138,8 @@ async function init() {
     } catch (e) {}
   }
   if (!refs.size) { $('svEmpty').style.display = 'block'; return; }
-  [...refs.values()].forEach(ref => {
+  const ext = new URLSearchParams(location.search).get('ext');               // retour de la page de paiement : la commande payée passe en premier
+  [...refs.values()].sort((a, b) => (b.externalId === ext) - (a.externalId === ext)).forEach(ref => {
     const card = h('div', { class: 'sv-card' }, h('div', { class: 'sv-sub' }, 'Chargement…'));
     list.append(card); refreshCard(ref, card);
   });

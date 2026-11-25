@@ -300,7 +300,7 @@ async function loadWallet() {
 async function saveWhatsapp() {
   const v = (document.getElementById('wWhatsapp').value || '').replace(/\s+/g, ''), msg = document.getElementById('wMsg');
   const say = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#16a34a' : '#dc2626'; };
-  if (v && !/^237[0-9]{9}$/.test(v)) { say('WhatsApp invalide : mets 237XXXXXXXXX', false); return; }
+  if (v && !/^[1-9][0-9]{7,14}$/.test(v)) { say('WhatsApp invalide : indicatif du pays + numéro, sans « + » (ex : 237XXXXXXXXX)', false); return; }
   try {
     const r = await api('/kpay/merchant/profile', { method: 'PUT', body: JSON.stringify({ whatsapp: v }) });
     const d = await r.json();
