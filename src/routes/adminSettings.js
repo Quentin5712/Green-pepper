@@ -11,6 +11,9 @@ const kpay     = require('../utils/kpay');
 const wallet   = require('../utils/wallet');
 const logger   = require('../utils/logger');
 const { verifyAdmin } = require('../middlewares/auth');
+const Avis = require('../models/Avis');
+const avisRoutes = require('./avis');
+const { providerInfo } = require('../utils/countries');
 
 const isHex24 = s => /^[a-f0-9]{24}$/.test(String(s || ''));
 const who = req => req.user.adminName || req.user.email || req.user.id;
@@ -123,18 +126,36 @@ router.post('/orders/:orderId/dispute-resolve', verifyAdmin, async (req, res) =>
 router.put('/merchants/:id/payout', verifyAdmin, async (req, res) => {
   try {
     if (!isHex24(req.params.id)) return res.status(400).json({ error: 'Marchand invalide' });
-    const phone = kpay.normalizeAdminPhone((req.body || {}).phone);
-    if (!phone) return res.status(400).json({ error: 'Numéro invalide, mets 237XXXXXXXXX' });
+    const phone = kpay.normalizeIntlPhone((req.body || {}).phone);
+    if (!phone) return res.status(400).json({ error: 'Numéro invalide : indicatif du pays + numéro, sans « + » (ex : 237XXXXXXXXX)' });
     const provider = (req.body || {}).payoutProvider || '';
-    if (!['', 'MTN_MOMO_CMR', 'ORANGE_CMR'].includes(provider)) return res.status(400).json({ error: 'Opérateur invalide' });
-    const before = await User.findOne({ _id: req.params.id, role: 'merchant', isDeleted: false }).select('phone payoutProvider name');
+    const before = await User.findOne({ _id: req.params.id, role: 'merchant', isDeleted: false }).select('phone payoutProvider name country');
     if (!before) return res.status(404).json({ error: 'Marchand introuvable' });
+    if (provider && (!providerInfo(provider) || providerInfo(provider).country !== (before.country || 'CMR'))) return res.status(400).json({ error: 'Opérateur invalide pour le pays de ce marchand' });
     const oldPhone = before.phone || '', oldProvider = before.payoutProvider || '';       // valeurs AVANT modification
     await User.updateOne({ _id: before._id }, { $set: { phone, payoutProvider: provider } });
     await wallet.audit('CHANGE_MERCHANT_PAYOUT', before._id, { old: oldPhone, new: phone, oldProvider, provider }, who(req), req.ip);
     logger.info(`PAYOUT_NUMBER marchand=${before._id} : ${oldPhone || 'aucun'} → ${phone} (${provider || 'auto'}) | par ${who(req)} | ip=${req.ip}`);
     res.json({ success: true, phone, payoutProvider: provider });
   } catch (e) { logger.error(`admin/merchants payout: ${e.message}`); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── Avis : l'admin peut masquer / republier un avis ──
+router.get('/avis', verifyAdmin, async (req, res) => {
+  try { const rows = await Avis.find({}).sort({ createdAt: -1 }).limit(100).lean(); res.json({ reviews: rows.map(a => ({ id: a._id, productName: a.productName, shopName: a.shopName, firstName: a.firstName, lastName: a.lastName, location: a.location, rating: a.rating, comment: a.comment, photoUrl: a.photoUrl, status: a.status, createdAt: a.createdAt })) }); }
+  catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.put('/avis/:id', verifyAdmin, async (req, res) => {
+  try {
+    if (!isHex24(req.params.id)) return res.status(400).json({ error: 'Avis invalide' });
+    const status = (req.body || {}).status;
+    if (!['PUBLISHED', 'HIDDEN'].includes(status)) return res.status(400).json({ error: 'status = PUBLISHED ou HIDDEN' });
+    const a = await Avis.findOneAndUpdate({ _id: req.params.id }, { $set: { status } }, { new: true });
+    if (!a) return res.status(404).json({ error: 'Avis introuvable' });
+    await avisRoutes.recomputeProduct(a.productId);
+    await wallet.audit(status === 'HIDDEN' ? 'AVIS_HIDDEN' : 'AVIS_PUBLISHED', a._id, {}, who(req), req.ip);
+    res.json({ success: true, status: a.status });
+  } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 module.exports = router;

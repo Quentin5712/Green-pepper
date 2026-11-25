@@ -11,7 +11,6 @@ const productCtrl = require('../controllers/product.controller');
 const payCtrl     = require('../controllers/payment.controller');
 const cartCtrl    = require('../controllers/cart.controller');
 const chatCtrl    = require('../controllers/chat.controller');
-const reviewCtrl  = require('../controllers/review.controller');
 const merchantCtrl= require('../controllers/merchant.controller');
 const notifCtrl   = require('../controllers/notification.controller');
 const shopCtrl    = require('../controllers/shop.controller');
@@ -58,10 +57,6 @@ router.put('/orders/:id/status',   verifyToken, payCtrl.updateOrderStatus);
 router.post('/chat/send',          verifyToken, chatCtrl.sendMessage);
 router.get ('/chat/:shopId',       verifyToken, chatCtrl.getChat);
 router.put ('/chat/:id/respond',   verifyMerchant, chatCtrl.respondMessage);
-
-// ── REVIEWS ──
-router.post('/reviews/:productId', verifyToken, reviewCtrl.createReview);
-router.get ('/reviews/:productId', reviewCtrl.getReviews);
 
 // ── NOTIFICATIONS ──
 router.get('/notifications',       verifyToken, notifCtrl.getNotifications);

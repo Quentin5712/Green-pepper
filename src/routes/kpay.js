@@ -15,6 +15,8 @@ const { authIfPresent, verifyToken, verifyMerchant } = require('../middlewares/a
 const limits  = require('../middlewares/rateLimiters');
 const { clean, PHONE_RE } = require('../utils/clean');
 const { notifyUser } = require('../utils/notify');
+const checkout = require('../utils/checkout');
+const { providerInfo } = require('../utils/countries');
 
 const isHex24  = s => /^[a-f0-9]{24}$/.test(String(s || ''));
 const isKpayId = s => /^[A-Za-z0-9_\-]{4,100}$/.test(String(s || ''));
@@ -39,87 +41,33 @@ async function findForBuyer(req, { kpayId, orderId, token }) {
   return { order, isOwner, isAdmin, tokenOk };
 }
 
-// ══════════════ POST /api/kpay/pay ══════════════
+// ══════════════ POST /api/kpay/pay  (Mobile Money direct : le client valide sur son téléphone) ══════════════
 router.post('/pay', limits.pay, authIfPresent, async (req, res) => {
-  const reserved = [];
-  const release = () => Promise.all(reserved.map(r => Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty, reserved: -r.qty } })));
   try {
-    let cfg;
-    try { cfg = await kpay.getKpayConfig(); }
-    catch (e) { logger.error(`KPay config invalide: ${e.message}`); return res.status(503).json({ error: 'Paiement indisponible (configuration).' }); }
-    if (!cfg.apiKey) return res.status(503).json({ error: 'Paiement indisponible : clé KPay non configurée.' });
-    if (!cfg.merchantNumber) { logger.error('ADMIN_PHONE manquant — paiement refusé'); return res.status(503).json({ error: 'Paiement indisponible : numéro de réception non configuré.' }); }
-
-    const { phone, provider, items, address, customerName } = req.body || {};
-    const phoneNum = String(phone || '').trim();
-    if (!PHONE_RE.test(phoneNum)) return res.status(400).json({ error: 'Numéro Mobile Money invalide' });
-    if (!PROVIDERS.includes(provider)) return res.status(400).json({ error: 'Opérateur invalide (MTN_MOMO_CMR ou ORANGE_CMR)' });
-    if (!Array.isArray(items) || !items.length || items.length > 20) return res.status(400).json({ error: 'Panier invalide' });
-
-    const wanted = new Map();
-    for (const it of items) {
-      const id = String(it?.productId || ''), qty = Number(it?.qty);
-      if (!isHex24(id) || !Number.isInteger(qty) || qty < 1 || qty > 10) return res.status(400).json({ error: 'Produit ou quantité invalide (1 à 10)' });
-      wanted.set(id, (wanted.get(id) || 0) + qty);
-    }
-    for (const q of wanted.values()) if (q > 10) return res.status(400).json({ error: 'Maximum 10 unités par produit' });
-
-    const ids = [...wanted.keys()];
-    const prods = await Product.find({ _id: { $in: ids }, isActive: true, isDeleted: false }).select('sellerId type');
-    if (prods.length !== ids.length) return res.status(404).json({ error: 'Un produit du panier n\'est plus disponible' });
-    if (new Set(prods.map(p => String(p.sellerId))).size > 1) return res.status(400).json({ error: 'Un paiement = une seule boutique. Commandez les boutiques séparément.' });
-    if (new Set(prods.map(p => p.type || 'physical')).size > 1) return res.status(400).json({ error: 'Passez les produits physiques et digitaux en deux commandes séparées.' });
-
-    // Prix TOUJOURS depuis la base ; stock réservé de façon atomique (jamais de survente)
-    const orderItems = []; let amount = 0;
-    for (const [pid, qty] of wanted) {
-      const prod = await Product.findOneAndUpdate({ _id: pid, isDeleted: false, isActive: true, stock: { $gte: qty } }, { $inc: { stock: -qty, reserved: qty } }, { new: true });
-      if (!prod) { await release(); return res.status(409).json({ error: 'Stock insuffisant pour un produit du panier' }); }
-      reserved.push({ productId: pid, qty });
-      const unit = prod.finalPrice;
-      orderItems.push({ productId: prod._id, name: prod.name, qty, priceAtPurchase: unit, discountApplied: prod.discount || 0, sellerId: prod.sellerId });
-      amount += unit * qty;
-    }
-    amount = Math.round(amount);
-    if (amount < MIN_AMOUNT) { await release(); return res.status(400).json({ error: `Montant minimum : ${MIN_AMOUNT} FCFA` }); }
-
-    const externalId = 'GP-' + Date.now() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-    const trackToken = crypto.randomBytes(24).toString('hex');
-    let order;
-    try {
-      order = await Order.create({
-        userId: req.user?.id || null, guestPhone: req.user ? '' : phoneNum, payerPhone: kpay.formatPhone(phoneNum),
-        customerName: clean(customerName || '', 80), address: clean(address || '', 300),
-        items: orderItems, amount, finalAmount: amount,
-        status: 'PENDING', externalId, provider, trackToken,
-        vendorId: String(prods[0].sellerId), orderType: prods[0].type || 'physical', receiverPhone: cfg.merchantNumber,
-      });
-    } catch (e) { await release(); throw e; }
-    logger.info(`PENDING: order=${order.orderNumber} ext=${externalId} ${amount} XAF type=${order.orderType} mode=${cfg.mode}`);
+    const { phone, provider } = req.body || {};
+    if (!providerInfo(provider)) return res.status(400).json({ error: 'Opérateur invalide' });
+    if (!PHONE_RE.test(String(phone || '').trim())) return res.status(400).json({ error: 'Numéro Mobile Money invalide' });
+    const r = await checkout.createCheckoutOrder(req, { method: 'MOMO', provider, phone });
+    if (!r.ok) return res.status(r.status).json(r.body);
+    const o = r.order;
+    if (r.existing) return res.json({ status: o.status, kpayId: o.kpayId || null, externalId: o.externalId, orderNumber: o.orderNumber, trackToken: r.trackToken, orderType: o.orderType, existing: true, message: 'Ce paiement est déjà en cours : validez-le sur votre téléphone.' });
 
     let pay;
-    try {
-      pay = await kpay.initPayment({ amount, provider, phoneNumber: phoneNum, externalId, orderNumber: order.orderNumber, description: `Commande ${order.orderNumber}` });
-    } catch (e) {
-      await wallet.markFailed(order, 'FAILED', { error: e.message });            // libère le stock
+    try { pay = await kpay.initPayment({ amount: o.finalAmount, provider, phoneNumber: phone, externalId: o.externalId, orderNumber: o.orderNumber, description: `Commande ${o.orderNumber}` }); }
+    catch (e) {
+      await wallet.markFailed(o, 'FAILED', { error: e.message });            // libère le stock
       return res.status(502).json({ error: 'Impossible de lancer le paiement. Vérifiez le numéro et réessayez.', code: e.code });
     }
     const upd = { kpayRef: pay.reference || '' };
     if (pay.id) upd.kpayId = pay.id;
     if (pay.feeAmount != null) upd.kpayFee = pay.feeAmount;
     if (pay.netAmount != null) upd.kpayNet = pay.netAmount;
-    await Order.updateOne({ _id: order._id }, { $set: upd });
-
+    await Order.updateOne({ _id: o._id }, { $set: upd });
     res.json({
-      status: 'PENDING', kpayId: pay.id || null, externalId, orderNumber: order.orderNumber, trackToken,
-      orderType: order.orderType,
-      message: provider === 'MTN_MOMO_CMR' ? 'Composez *126# et validez le paiement, ou attendez la demande MoMo.' : 'Validez le paiement sur votre téléphone Orange Money.',
+      status: 'PENDING', kpayId: pay.id || null, externalId: o.externalId, orderNumber: o.orderNumber, trackToken: r.trackToken, orderType: o.orderType,
+      message: /MTN/.test(provider) ? 'Composez *126# et validez le paiement, ou attendez la demande MoMo.' : 'Validez le paiement sur votre téléphone.',
     });
-  } catch (e) {
-    try { await release(); } catch (x) {}
-    logger.error(`kpay/pay: ${e.message}`);
-    res.status(500).json({ error: 'Erreur serveur paiement' });
-  }
+  } catch (e) { logger.error(`kpay/pay: ${e.message}`); res.status(500).json({ error: 'Erreur serveur paiement' }); }
 });
 
 // ══════════════ POST /api/kpay/webhook ══════════════
@@ -196,7 +144,8 @@ router.get('/status/:kpayId', authIfPresent, async (req, res) => {
       digitalLinks = ps.filter(p => p.digitalUrl).map(p => ({ name: p.name, url: p.digitalUrl }));
     }
     res.json({
-      kpayId: order.kpayId, orderNumber: order.orderNumber, status: order.status, finalAmount: order.finalAmount,
+      kpayId: order.kpayId, externalId: order.externalId, paymentMethod: order.paymentMethod, orderNumber: order.orderNumber, status: order.status, finalAmount: order.finalAmount,
+      crypto: order.paymentMethod === 'USDT' ? { address: order.crypto?.payAddress, amount: order.crypto?.payAmount, expiresAt: order.crypto?.expiresAt, status: order.crypto?.status, actuallyPaid: order.crypto?.actuallyPaid || 0 } : undefined,
       orderType: order.orderType, deliveryStatus: order.deliveryStatus, photoUploaded: !!order.photo_livraison,
       shippedAt: order.shippedAt || null, paidAt: order.paidAt || null, createdAt: order.createdAt,
       items: order.items.map(i => ({ name: i.name, qty: i.qty })), digitalLinks,
@@ -278,7 +227,7 @@ router.get('/merchant/wallet', verifyMerchant, async (req, res) => {
 router.put('/merchant/profile', verifyMerchant, async (req, res) => {
   try {
     const raw = String((req.body || {}).whatsapp || '').replace(/\s+/g, '');
-    if (raw && !/^237[0-9]{9}$/.test(raw)) return res.status(400).json({ error: 'WhatsApp invalide : mets 237XXXXXXXXX' });
+    if (raw && !kpay.normalizeIntlPhone(raw)) return res.status(400).json({ error: 'WhatsApp invalide : indicatif du pays + numéro, sans « + » (ex : 237XXXXXXXXX)' });
     await User.updateOne({ _id: req.user.id }, { $set: { whatsapp: raw } });   // seul champ modifiable : jamais commission ni numéro de versement
     res.json({ success: true, whatsapp: raw });
   } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
