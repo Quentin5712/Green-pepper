@@ -13,7 +13,7 @@ if (missing.length) {
 
 // JWT_REFRESH_SECRET par défaut = JWT_SECRET + "_refresh"
 if (!process.env.JWT_REFRESH_SECRET) {
-  process.env.JWT_REFRESH_SECRET = process.env.JWT_SECRET + '_refresh_secret_green_pepper';
+  process.env.JWT_REFRESH_SECRET = process.env.JWT_SECRET + '_refresh_secret';
 }
 
 // ADMIN_USER par défaut = quentin
