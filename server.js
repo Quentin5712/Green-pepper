@@ -18,6 +18,8 @@ const { startOfflineCron }    = require('./src/jobs/offlineCron');
 const { startDiscountExpiryCron } = require('./src/jobs/discountExpiryCron');
 const apiRoutes    = require('./src/routes/index');
 const kpayRoutes   = require('./src/routes/kpay');
+const payRoutes    = require('./src/routes/pay');
+const avisRoutes   = require('./src/routes/avis');
 const uploadRoutes = require('./src/routes/upload');
 const adminSettingsRoutes = require('./src/routes/adminSettings');
 const { startPayoutCron } = require('./src/jobs/payoutCron');
@@ -26,7 +28,7 @@ const kpayUtil     = require('./src/utils/kpay');
 const app     = express();
 const PORT    = process.env.PORT || 3000;
 const INDEX   = path.join(__dirname, 'public', 'index.html');
-const ALLOWED = (process.env.ALLOWED_ORIGINS || 'https://investpro-fxar.onrender.com,https://green-pepper.onrender.com,http://localhost:3000').split(',').map(s=>s.trim());
+const ALLOWED = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(s=>s.trim());
 
 fs.mkdirSync(path.join(__dirname,'public','uploads'), { recursive:true });
 fs.mkdirSync(path.join(__dirname,'invoices'), { recursive:true });
@@ -90,6 +92,8 @@ app.use(activityTracker);
 // ── API ──
 // Paiement KPay, photo de livraison, réglages admin (montés AVANT le routeur général)
 app.use('/api/kpay', kpayRoutes);
+app.use('/api/pay', payRoutes);          // page hébergée (carte), USDT, cotation
+app.use('/api/avis', avisRoutes);        // avis clients
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminSettingsRoutes);
 app.use('/api', apiRoutes);
@@ -130,7 +134,7 @@ connectDB().then(async () => {
   startOfflineCron();
   startDiscountExpiryCron();
   app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`🌶️  Green Pepper Market — port ${PORT} — ${process.env.NODE_ENV}`);
+    logger.info(`🌍 Marketplace Afrique — port ${PORT} — ${process.env.NODE_ENV}`);
     logger.info(`   MongoDB    : ✅`);
     logger.info(`   KPay       : ${process.env.KPAY_API_KEY?'✅':'❌ KPAY_API_KEY manquant'}`);
     logger.info(`   Index      : ${fs.existsSync(INDEX)?'✅':'❌ INTROUVABLE'}`);
