@@ -7,6 +7,7 @@ const ShopSchema = new mongoose.Schema({
   description:{ type: String, trim: true, maxlength: 2000, default: '' },
   category:  { type: String, default: 'Général' },
   logoUrl:   { type: String, default: '' },
+  country:   { type: String, default: 'CMR' },
   city:      { type: String, default: '' },
   phone:     { type: String, default: '' },
   isActive:  { type: Boolean, default: true },

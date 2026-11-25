@@ -29,7 +29,8 @@ const UserSchema = new mongoose.Schema({
   // Marchand
   storeName:    { type: String, trim: true },
   whatsapp:     { type: String, default: '' },                 // 237 + 9 chiffres
-  payoutProvider: { type: String, enum: ['', 'MTN_MOMO_CMR', 'ORANGE_CMR'], default: '' },  // opérateur de versement (vide = détecté)
+  country:      { type: String, default: 'CMR' },                  // pays du marchand (opérateur de versement)
+  payoutProvider: { type: String, enum: ['', ...Object.keys(require('../utils/countries').PROVIDERS)], default: '' },  // opérateur de versement (vide = détecté)
   expiresAt:    { type: Date },
 }, {
   timestamps: true,

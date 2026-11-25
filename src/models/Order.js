@@ -37,7 +37,14 @@ const OrderSchema = new mongoose.Schema({
   kpayTxId:     { type: String, default: '' },
   kpayFee:      { type: Number },                                    // commission KPay (si renvoyée)
   kpayNet:      { type: Number },                                    // net réellement reçu (si renvoyé)
-  provider:     { type: String, enum: ['MTN_MOMO_CMR','ORANGE_CMR'], required: true },
+  provider:     { type: String, required: true },                      // code opérateur KPay, 'GATEWAY' ou 'USDT_TRC20'
+  paymentMethod:{ type: String, enum: ['MOMO','GATEWAY','USDT'], default: 'MOMO' },
+  walletCountry:{ type: String, default: 'CMR' },                      // portefeuille KPay qui reçoit l'argent
+  clientRef:    { type: String, index: true },                         // anti double-clic : même référence = même commande
+  crypto: {
+    paymentId: String, payAddress: String, payAmount: Number, priceUsd: Number, rate: Number,
+    status: String, actuallyPaid: Number, expiresAt: Date,
+  },
   receiverPhone:{ type: String, default: '' },                       // numéro admin au moment de la commande
   trackToken:   { type: String, select: false },                     // secret remis à l'acheteur (suivi sans compte)
   paidAt:       { type: Date },
