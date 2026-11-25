@@ -15,6 +15,7 @@ const kpay     = require('./kpay');
 const logger   = require('./logger');
 const { notifyUser } = require('./notify');
 const { generateInvoice } = require('./invoice');
+const { providerInfo, INTL_RE } = require('./countries');
 
 const PAID_STATUSES = ['VALIDÉ', 'LIVRÉ'];
 const MAX_ATTEMPTS  = 5;
@@ -152,7 +153,27 @@ async function markFailed(order, outcome = 'FAILED', raw = null) {
 }
 
 // ── Interroge KPay par kpayId et applique le résultat (webhook perdu, polling) ──
+async function reconcileCrypto(order) {
+  const np = require('./nowpayments');
+  if (!order.crypto || !order.crypto.paymentId) return { changed: false };
+  const p = await np.getPayment(order.crypto.paymentId);
+  const st = np.normalizeStatus(p.payment_status);
+  const paid = Number(p.actually_paid) || 0;
+  const previous = order.crypto.status;                     // statut AVANT mise à jour (évite de prévenir l'admin à chaque notification)
+  await Order.updateOne({ _id: order._id }, { $set: { 'crypto.status': p.payment_status, 'crypto.actuallyPaid': paid } });
+  if (st === 'SUCCESS') {
+    const res = await markPaid(order, { txId: 'np_' + order.crypto.paymentId, raw: p }, '');
+    const over = paid - (Number(order.crypto.payAmount) || 0);
+    if (res.changed && over > 0.01) await notifyAdmins(`⚠️ Surpaiement USDT de ${over.toFixed(2)} sur ${order.orderNumber} : à rembourser au client`);
+    return res;
+  }
+  if (st === 'PARTIAL') { if (previous !== 'partially_paid') await notifyAdmins(`⚠️ Paiement USDT PARTIEL sur ${order.orderNumber} : reçu ${paid} sur ${order.crypto.payAmount} USDT`); return { changed: false, partial: true }; }
+  if (st === 'FAILED' && order.status === 'PENDING') return markFailed(order, 'FAILED', p);
+  return { changed: false, pending: true };
+}
+
 async function reconcileOrder(order) {
+  if (order && order.paymentMethod === 'USDT' && ['PENDING', 'EXPIRED'].includes(order.status)) return reconcileCrypto(order);
   if (!order || order.status !== 'PENDING' || !order.kpayId) return { changed: false };
   const remote = await kpay.getStatus(order.kpayId);
   if (remote.status === 'SUCCESS') return markPaid(order, { txId: order.kpayId, fee: remote.feeAmount, net: remote.netAmount, raw: remote.raw });
@@ -182,17 +203,21 @@ async function releasePayout(orderId, by = 'auto', opts = {}) {
     return { ok: false, reason: status, error: msg };
   };
 
-  const vendor = isHex24(vendorId) ? await User.findOne({ _id: vendorId, isDeleted: false }).select('name storeName phone payoutProvider isBanned') : null;
+  const vendor = isHex24(vendorId) ? await User.findOne({ _id: vendorId, isDeleted: false }).select('name storeName phone payoutProvider isBanned country') : null;
   if (!vendor || vendor.isBanned) return fail('FAILED', 'Vendeur introuvable ou banni');
-  const phone = kpay.formatPhone(vendor.phone || '');
-  if (!/^237[0-9]{9}$/.test(phone)) return fail('FAILED', 'Téléphone du vendeur invalide');
-  const provider = vendor.payoutProvider || kpay.detectProviderFromPhone(phone);
-  if (!provider) return fail('FAILED', 'Opérateur du vendeur inconnu (à renseigner)');
+  const vcountry = vendor.country || 'CMR';
+  const phone = kpay.formatPhone(vendor.phone || '', vcountry);
+  if (!INTL_RE.test(phone)) return fail('FAILED', 'Téléphone du vendeur invalide');
+  const provider = vendor.payoutProvider || (vcountry === 'CMR' ? kpay.detectProviderFromPhone(phone) : null);
+  const pinfo = providerInfo(provider);
+  if (!pinfo) return fail('FAILED', 'Opérateur du vendeur inconnu (à renseigner)');
+  if (pinfo.country !== vcountry) return fail('FAILED', 'Opérateur incompatible avec le pays du vendeur');
+  const sourceCountry = order.walletCountry && order.walletCountry !== pinfo.country ? order.walletCountry : undefined;   // versement transfrontalier
 
   let res;
   try {
     res = await kpay.payoutToVendor({
-      amount: order.montant_vendeur, provider, phoneNumber: phone, externalId,
+      amount: order.montant_vendeur, provider, phoneNumber: phone, externalId, sourceCountry,
       description: `Versement ${order.orderNumber} ${vendor.storeName || vendor.name || ''}`.trim().slice(0, 100),
     });
   } catch (e) {
@@ -283,7 +308,8 @@ async function reconcilePending() {
   for (const o of orders) {
     try {
       const r = await reconcileOrder(o);
-      if (r.pending && Date.now() - o.createdAt.getTime() > 45 * 60 * 1000) await markFailed(o, 'EXPIRED');
+      const windowMin = o.paymentMethod === 'USDT' ? 60 : 45;
+      if (r.pending && Date.now() - o.createdAt.getTime() > windowMin * 60 * 1000) await markFailed(o, 'EXPIRED');
     } catch (e) { /* KPay injoignable : on garde PENDING, jamais d'expiration à l'aveugle */ }
   }
 }

@@ -14,9 +14,9 @@ async function generateInvoice(order) {
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    doc.fontSize(20).fillColor('#1a1a1a').text('🌶️ Green Pepper Market', { align: 'center' });
+    doc.fontSize(20).fillColor('#1a1a1a').text(process.env.SITE_NAME || 'Marketplace Afrique', { align: 'center' });
     doc.moveDown(0.5);
-    doc.fontSize(10).fillColor('#666').text('Marché Camerounais — Paiement Mobile Money', { align: 'center' });
+    doc.fontSize(10).fillColor('#666').text('Des marchands de toute l\'Afrique', { align: 'center' });
     doc.moveDown(1);
 
     doc.fontSize(14).fillColor('#1a1a1a').text(`Facture N° ${order.orderNumber}`);
@@ -42,7 +42,7 @@ async function generateInvoice(order) {
     doc.fontSize(13).fillColor('#f97316').text(`Total payé: ${Number(order.finalAmount).toLocaleString('fr-FR')} FCFA`, { bold: true });
 
     doc.moveDown(2);
-    doc.fontSize(9).fillColor('#aaa').text('Green Pepper Market — Douala, Cameroun', { align: 'center' });
+    doc.fontSize(9).fillColor('#aaa').text((process.env.SITE_NAME || 'Marketplace Afrique'), { align: 'center' });
     doc.text('Merci de votre confiance.', { align: 'center' });
 
     doc.end();

@@ -7,6 +7,7 @@
 const axios  = require('axios');
 const crypto = require('crypto');
 const logger = require('./logger');
+const { COUNTRIES, providerInfo, INTL_RE, toIntlPhone } = require('./countries');
 
 const DEFAULT_BASE = 'https://admin.kpay.site';
 const TIMEOUT      = 15000;
@@ -20,11 +21,11 @@ class KPayError extends Error {
 }
 
 // ── Téléphone : 237 + 9 chiffres, sans +, sans espace ──
-function formatPhone(phone) {
-  let p = String(phone || '').replace(/[\s\-\+\.\(\)]/g, '');
-  if (p.startsWith('00237')) p = p.slice(2);
-  if (p.startsWith('237') && p.length === 12) return p;
-  return '237' + p.slice(-9);
+function formatPhone(phone, countryIso = 'CMR') { return toIntlPhone(phone, countryIso); }
+// Numéro international générique (WhatsApp, vendeurs) : 8 à 15 chiffres, sans « + » ni espace
+function normalizeIntlPhone(input) {
+  const s = String(input || '').replace(/\s+/g, '');
+  return INTL_RE.test(s) ? s : null;
 }
 const ADMIN_PHONE_RE = /^237[0-9]{9}$/;
 // Saisie du numéro admin : on ignore les espaces, mais « + » ou format différent = refusé
@@ -134,7 +135,7 @@ async function initPayment({ amount, provider, phoneNumber, externalId, descript
   const body = {
     amount: Math.round(Number(amount)),
     provider,
-    phoneNumber: formatPhone(phoneNumber),
+    phoneNumber: formatPhone(phoneNumber, (providerInfo(provider) || {}).country || 'CMR'),
     externalId,
     description: description || 'Paiement marketplace',
   };
@@ -156,6 +157,34 @@ async function initPayment({ amount, provider, phoneNumber, externalId, descript
   const out = normalizePayment(r.data?.data || r.data || {}, r.data);
   if (!out.id) logger.warn(`KPay init: réponse sans id (impossible de vérifier ensuite par kpayId) mode=${cfg.mode}`);
   logger.info(`KPay init OK: id=${out.id} status=${out.rawStatus} fee=${out.feeAmount} net=${out.netAmount} mode=${cfg.mode}`);
+  return out;
+}
+
+// ── Page de paiement hébergée : le client choisit lui-même sa carte ou son opérateur chez KPay ──
+async function initGateway({ amount, externalId, description, returnUrl, cancelUrl, orderNumber }) {
+  const cfg = await getKpayConfig();
+  if (!cfg.apiKey) throw new KPayError('KPAY_API_KEY manquant', 'NO_KEY');
+  const body = { amount: Math.round(Number(amount)), externalId, description: description || 'Paiement marketplace', mode: 'GATEWAY', returnUrl, cancelUrl };
+  const url = cfg.baseUrl + (process.env.KPAY_GATEWAY_PATH || '/api/v1/payments/init');
+  logger.info(`KPay gateway: mode=${cfg.mode} ${body.amount} XAF ${externalId} beneficiaire=${cfg.merchantNumber || 'AUCUN'}`);
+  let r;
+  try { r = await axios.post(url, { ...body, metadata: { merchantNumber: cfg.merchantNumber || undefined, orderNumber } }, { headers: headers(cfg), timeout: TIMEOUT }); }
+  catch (e) {
+    const st = e.response?.status;
+    if (st === 400 || st === 422) {
+      logger.warn(`KPay gateway: metadata refusée (status=${st}) — nouvel essai sans metadata mode=${cfg.mode}`);
+      try { r = await axios.post(url, body, { headers: headers(cfg), timeout: TIMEOUT }); }
+      catch (e2) { logFail('KPay gateway failed', cfg, e2); throw wrapError(e2); }
+    } else { logFail('KPay gateway failed', cfg, e); throw wrapError(e); }
+  }
+  const d = r.data?.data || r.data || {};
+  const out = normalizePayment(d, r.data);
+  out.gatewayUrl = d.gatewayUrl || d.gateway_url || d.paymentUrl || d.url || null;
+  if (!out.gatewayUrl || !/^https:\/\//.test(out.gatewayUrl)) {
+    logger.error(`KPay gateway: aucune adresse de paiement dans la réponse mode=${cfg.mode} body=${JSON.stringify(r.data).slice(0, 300)}`);
+    throw new KPayError('KPay n\'a pas renvoyé d\'adresse de paiement', 'NO_GATEWAY_URL');
+  }
+  logger.info(`KPay gateway OK: id=${out.id} mode=${cfg.mode}`);
   return out;
 }
 
@@ -198,29 +227,33 @@ async function getBalance(currency = 'XAF') {
 }
 
 // ── Verser au vendeur (PAYOUT) — jamais sans solde suffisant ──
-async function payoutToVendor({ amount, provider, phoneNumber, externalId, description }) {
+async function payoutToVendor({ amount, provider, phoneNumber, externalId, description, sourceCountry }) {
   const cfg = await getKpayConfig();
   if (!cfg.apiKey) throw new KPayError('KPAY_API_KEY manquant', 'NO_KEY');
   const amt = Math.round(Number(amount));
   if (!(amt > 0)) throw new KPayError('Montant invalide', 'VALIDATION');
-  if (!['MTN_MOMO_CMR', 'ORANGE_CMR'].includes(provider)) throw new KPayError('Opérateur invalide', 'VALIDATION');
-  const phone = formatPhone(phoneNumber);
-  if (!ADMIN_PHONE_RE.test(phone)) throw new KPayError('Numéro du vendeur invalide', 'VALIDATION');
+  const pinfo = providerInfo(provider);
+  if (!pinfo) throw new KPayError('Opérateur invalide', 'VALIDATION');
+  const phone = formatPhone(phoneNumber, pinfo.country);
+  if (!INTL_RE.test(phone)) throw new KPayError('Numéro du vendeur invalide', 'VALIDATION');
+  const crossBorder = sourceCountry && sourceCountry !== pinfo.country && COUNTRIES[sourceCountry];
+  const walletCurrency = crossBorder ? COUNTRIES[sourceCountry].currency : pinfo.currency;   // portefeuille débité
   if (!/^PAYOUT-[A-Za-z0-9]+-\d+$/.test(String(externalId))) throw new KPayError('externalId de versement invalide', 'VALIDATION');
 
   if (process.env.KPAY_BALANCE_CHECK !== 'off') {
-    const bal = await getBalance('XAF');
+    const bal = await getBalance(walletCurrency);
     if (!bal.known) {
       logger.warn(`PAYOUT bloqué : solde KPay indisponible (impossible de vérifier) externalId=${externalId} mode=${cfg.mode}`);
       throw new KPayError('Solde KPay indisponible', 'BALANCE_UNKNOWN');
     }
     if (bal.available < amt) {
-      logger.warn(`PAYOUT bloqué : solde insuffisant (disponible=${bal.available} XAF, requis=${amt} XAF) externalId=${externalId} mode=${cfg.mode}`);
+      logger.warn(`PAYOUT bloqué : solde insuffisant (disponible=${bal.available} ${walletCurrency}, requis=${amt} ${walletCurrency}) externalId=${externalId} mode=${cfg.mode}`);
       throw new KPayError(`Solde KPay insuffisant (${bal.available} < ${amt})`, 'INSUFFICIENT_BALANCE');
     }
   }
 
   const body = { amount: amt, provider, phoneNumber: phone, externalId, description: description || 'Versement vendeur' };
+  if (crossBorder) body.sourceCountry = sourceCountry;                 // versement transfrontalier : conversion automatique par KPay
   const withMeta = { ...body, metadata: { senderNumber: cfg.merchantNumber || undefined } };
   const url = cfg.baseUrl + (process.env.KPAY_PAYOUT_PATH || '/api/v1/payouts/init');
   logger.info(`KPay payout: mode=${cfg.mode} ${provider} ${phone} ${amt} XAF ${externalId} expediteur=${cfg.merchantNumber || 'AUCUN'}`);
@@ -271,7 +304,7 @@ async function logStartupConfig() {
 }
 
 module.exports = {
-  KPayError, formatPhone, normalizeAdminPhone, detectProviderFromPhone,
+  KPayError, formatPhone, normalizeAdminPhone, normalizeIntlPhone, initGateway, detectProviderFromPhone,
   getKpayConfig, invalidateConfigCache, describeConfig, logStartupConfig,
   initPayment, getStatus, getBalance, payoutToVendor, verifyHmac, normalizeStatus,
 };
