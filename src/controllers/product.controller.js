@@ -3,6 +3,41 @@ const Product = require('../models/Product');
 const { clean, safeUrl, safeHttpsUrl } = require('../utils/clean');
 const User = require('../models/User');
 const Shop = require('../models/Shop');
+const Order = require('../models/Order');
+
+// ── Fiche détaillée : lecture tolérante (tableau OU texte « une ligne par élément ») + nettoyage anti-XSS ──
+const toLines = (v, max, maxLen) => (Array.isArray(v) ? v : String(v == null ? '' : v).split(/\r?\n/)).map(x => clean(String(x), maxLen).trim()).filter(Boolean).slice(0, max);
+function toPairs(v, max) {
+  const rows = Array.isArray(v) ? v : String(v == null ? '' : v).split(/\r?\n/);
+  return rows.map(r => {
+    if (r && typeof r === 'object') return { label: clean(String(r.label || ''), 40).trim(), value: clean(String(r.value || ''), 120).trim() };
+    const i = String(r).indexOf(':'); if (i < 1) return null;
+    return { label: clean(String(r).slice(0, i), 40).trim(), value: clean(String(r).slice(i + 1), 120).trim() };
+  }).filter(x => x && x.label && x.value).slice(0, max);
+}
+// Remise : 1 à 90 %, date de fin OBLIGATOIRE et future (180 jours max) — modifiable par l'admin ET par chaque marchand sur SES produits
+function parseDiscount(body) {
+  if (body.discount === undefined && body.discountExpiresAt === undefined) return { set: false };
+  const pct = Math.round(Number(body.discount) || 0);
+  if (pct <= 0) return { set: true, discount: 0, discountExpiresAt: null };
+  if (pct > 90) return { error: 'Remise : 90 % maximum' };
+  const end = new Date(body.discountExpiresAt);
+  if (!body.discountExpiresAt || isNaN(end)) return { error: 'Remise : indiquez la date de fin de l\'offre' };
+  if (end <= new Date()) return { error: 'Remise : la date de fin doit être dans le futur' };
+  if (end - new Date() > 180 * 86400000) return { error: 'Remise : 180 jours maximum' };
+  return { set: true, discount: pct, discountExpiresAt: end };
+}
+function detailsFrom(body, partial) {
+  const d = {}; const has = k => body[k] !== undefined;
+  if (!partial || has('images'))       d.images = (Array.isArray(body.images) ? body.images : []).map(safeUrl).filter(Boolean).slice(0, 4);
+  if (!partial || has('brand'))        d.brand = clean(String(body.brand || ''), 80);
+  if (!partial || has('origin'))       d.origin = clean(String(body.origin || ''), 60);
+  if (!partial || has('deliveryInfo')) d.deliveryInfo = clean(String(body.deliveryInfo || ''), 300);
+  if (!partial || has('highlights'))   d.highlights = toPairs(body.highlights, 8);
+  if (!partial || has('bullets'))      d.bullets = toLines(body.bullets, 10, 220);
+  if (!partial || has('specs'))        d.specs = toPairs(body.specs, 20);
+  return d;
+}
 
 // Prix affiché : la réduction n'apparaît que si elle est encore valable. (.lean() ne calcule pas les champs virtuels : on le fait ici)
 function priceInfo(p) {
@@ -23,12 +58,12 @@ async function withSeller(list) {
     const u = by[String(p.sellerId)];
     p.sellerWhatsapp = u && /^[1-9][0-9]{7,14}$/.test(u.whatsapp || '') ? u.whatsapp : '';
     const shop = sh[String(p.shopId || (u && u.shopId) || '')];
-    p.shop = shop ? { name: shop.name, logoUrl: shop.logoUrl || '', country: shop.country || '' } : (u && u.storeName ? { name: u.storeName, logoUrl: '', country: u.country || '' } : null);
+    p.shop = shop ? { id: String(shop._id), name: shop.name, logoUrl: shop.logoUrl || '', country: shop.country || '' } : (u && u.storeName ? { name: u.storeName, logoUrl: '', country: u.country || '' } : null);
     p.storeName = u ? (u.storeName || u.name || '') : '';
   });
   return list;
 }
-const san = s => typeof s==='string' ? clean(s, 2000) : s;
+const san = s => typeof s==='string' ? clean(s, 5000) : s;
 const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // « boissons », « Boissons  » et « BOISSONS » deviennent la même catégorie
 const normCat = s => { const c = clean(String(s || ''), 50).replace(/\s+/g, ' '); return c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Divers'; };
@@ -48,7 +83,11 @@ async function getAll(req, res) {
     const { q, category, minPrice, maxPrice, shopId, sellerId, page=1, limit=48 } = req.query;
     const filter = { isActive:true, isDeleted:false };
     if (category) filter.category = new RegExp('^' + escRe(san(category)) + '$', 'i');
-    if (shopId)   filter.shopId   = shopId;
+    if (shopId) {
+      if (!/^[a-f0-9]{24}$/.test(String(shopId))) return res.json({ products: [], total: 0, page: 1, pages: 0 });
+      const sh = await Shop.findById(String(shopId)).select('ownerId').lean();
+      filter.$or = [{ shopId: String(shopId) }].concat(sh && sh.ownerId ? [{ sellerId: String(sh.ownerId) }] : []);
+    }
     if (sellerId) filter.sellerId = san(String(sellerId));
     if (req.query.promo === '1') { filter.discount = { $gt: 0 }; filter.discountExpiresAt = { $gt: new Date() }; }       // section « Promotions »
     if (q)        filter.$text    = { $search: san(q) };
@@ -58,7 +97,7 @@ async function getAll(req, res) {
       Product.countDocuments(filter),
     ]);
     await withSeller(products);
-    products.forEach(p => Object.assign(p, priceInfo(p)));
+    products.forEach(p => { Object.assign(p, priceInfo(p)); if (!p.reviewCount) p.rating = 0; });
     res.json({ products, total, page:Number(page), pages:Math.ceil(total/Number(limit)) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 }
@@ -69,6 +108,9 @@ async function getOne(req, res) {
     if (!p || !p.isActive) return res.status(404).json({ error:'Produit introuvable' });
     await withSeller([p]);
     Object.assign(p, priceInfo(p));
+    if (!p.reviewCount) p.rating = 0;
+    // « N achetés au cours du mois dernier » : vraies commandes payées uniquement
+    p.sold30 = await Order.countDocuments({ 'items.productId': p._id, status: { $in: ['VALIDÉ', 'LIVRÉ'] }, createdAt: { $gte: new Date(Date.now() - 30 * 86400000) } });
     res.json(p);
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
@@ -80,7 +122,10 @@ async function create(req, res) {
     const type = req.body.type === 'digital' ? 'digital' : 'physical';
     const digitalUrl = type === 'digital' ? safeHttpsUrl(req.body.digitalUrl) : '';
     if (type === 'digital' && !digitalUrl) return res.status(400).json({ error:'Produit digital : lien de téléchargement https:// obligatoire' });
-    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:normCat(category), description:san(description||''), imageUrl:safeUrl(imageUrl), unit:san(unit||'unité'), type, digitalUrl, sellerId:req.user.id, shopId:req.user.shopId||null });
+    const disc = parseDiscount(req.body); if (disc.error) return res.status(400).json({ error: disc.error });
+    const extra = detailsFrom(req.body, false);
+    if (disc.set) { extra.discount = disc.discount; extra.discountExpiresAt = disc.discountExpiresAt; }
+    const p = await Product.create({ name:san(name), price:Number(price), stock:Number(stock)||0, category:normCat(category), description:san(description||''), imageUrl:safeUrl(imageUrl), unit:san(unit||'unité'), type, digitalUrl, sellerId:req.user.id, shopId:req.user.shopId||null, ...extra });
     res.status(201).json(p);
   } catch(e) { res.status(500).json({ error:e.message }); }
 }
@@ -104,6 +149,9 @@ async function update(req, res) {
     if(upd.type === 'physical') upd.digitalUrl = '';
     if(upd.price)       upd.price       = Number(upd.price);
     if(upd.stock!==undefined) upd.stock = Number(upd.stock);
+    Object.assign(upd, detailsFrom(req.body, true));
+    const disc = parseDiscount(req.body); if (disc.error) return res.status(400).json({ error: disc.error });
+    if (disc.set) { upd.discount = disc.discount; upd.discountExpiresAt = disc.discountExpiresAt; }
     const p = await Product.findByIdAndUpdate(req.params.id, upd, { new:true, runValidators:true });
     if (!p) return res.status(404).json({ error:'Produit introuvable' });
     res.json(p);
@@ -164,4 +212,34 @@ async function getCategories(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 }
 
-module.exports = { getAll, getOne, create, update, remove, addStock, seed, getCategories };
+// ── Autres produits de la même boutique + produits similaires ──
+async function related(req, res) {
+  try {
+    const p = await Product.findOne({ _id: req.params.id, isDeleted: false, isActive: true }).lean();
+    if (!p) return res.status(404).json({ error: 'Produit introuvable' });
+    const base = { isDeleted: false, isActive: true, _id: { $ne: p._id } };
+    const same = await Product.find({ ...base, sellerId: p.sellerId }).sort({ createdAt: -1 }).limit(8).lean();
+    const sim  = await Product.find({ ...base, category: p.category, sellerId: { $ne: p.sellerId } }).sort({ createdAt: -1 }).limit(8).lean();
+    for (const list of [same, sim]) { await withSeller(list); list.forEach(x => { Object.assign(x, priceInfo(x)); if (!x.reviewCount) x.rating = 0; }); }
+    res.json({ sameShop: same, similar: sim });
+  } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+}
+// ── Remise rapide : le marchand sur SES produits (ou l'admin) ──
+async function setDiscount(req, res) {
+  try {
+    if (!(await ownProduct(req, res))) return;
+    const d = parseDiscount({ discount: req.body.discount, discountExpiresAt: req.body.discountExpiresAt });
+    if (d.error) return res.status(400).json({ error: d.error });
+    if (!d.set || d.discount <= 0) return res.status(400).json({ error: 'Indiquez un pourcentage de 1 à 90' });
+    const p = await Product.findByIdAndUpdate(req.params.id, { discount: d.discount, discountExpiresAt: d.discountExpiresAt }, { new: true });
+    res.json({ success: true, discount: p.discount, discountExpiresAt: p.discountExpiresAt });
+  } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+}
+async function removeDiscount(req, res) {
+  try {
+    if (!(await ownProduct(req, res))) return;
+    await Product.findByIdAndUpdate(req.params.id, { discount: 0, discountExpiresAt: null });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+}
+module.exports = { getAll, getOne, create, update, remove, addStock, seed, getCategories, related, setDiscount, removeDiscount };

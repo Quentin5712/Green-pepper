@@ -335,7 +335,8 @@ async function createMerchant(req, res) {
     if (!INTL_RE.test(phoneIntl)) return res.status(400).json({ error: 'Numéro Mobile Money invalide' });
     const whatsappRaw = String(req.body.whatsapp || '').replace(/\s+/g, '');
     const whatsapp = whatsappRaw ? toIntlPhone(whatsappRaw, country) : '';
-    if (whatsapp && !INTL_RE.test(whatsapp)) return res.status(400).json({ error: 'WhatsApp invalide : indicatif du pays + numéro' });
+    if (!whatsapp) return res.status(400).json({ error: 'WhatsApp du marchand requis : le bouton WhatsApp s\'affiche sur tous ses produits' });
+    if (!INTL_RE.test(whatsapp)) return res.status(400).json({ error: 'WhatsApp invalide : indicatif du pays + numéro' });
     const payoutProvider = String(req.body.payoutProvider || '');
     if (payoutProvider && (!providerInfo(payoutProvider) || providerInfo(payoutProvider).country !== country)) return res.status(400).json({ error: 'Cet opérateur n\'existe pas dans le pays choisi' });
     if (!payoutProvider && country !== 'CMR') return res.status(400).json({ error: 'Choisissez l\'opérateur de versement du marchand' });
