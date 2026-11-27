@@ -83,6 +83,10 @@
   </div>
 
   <!-- PRODUITS -->
+  <div id="waBanner" style="display:none;background:#fffbeb;border:1px solid #fde68a;color:#78350f;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px">
+    ⚠️ <b>Ajoutez votre numéro WhatsApp.</b> Sans lui, le bouton WhatsApp n'apparaît pas sur vos produits et les clients ne peuvent pas vous écrire.
+    <button onclick="switchTab('wallet')" style="margin-left:8px;padding:5px 12px;border-radius:8px;border:1px solid #d97706;background:#fff;color:#b45309;font-weight:700;cursor:pointer">Ajouter</button>
+  </div>
   <div id="panel-products">
     <div class="form-card">
       <p style="font-size:14px;font-weight:700;margin-bottom:14px" id="formTitle">➕ Nouveau produit</p>
@@ -105,7 +109,27 @@
           <span id="pImgStatus" class="up-status"></span>
           <input id="pImg" class="f-inp" oninput="setImgPreview(this.value)" placeholder="…ou collez le lien d'une photo déjà en ligne" autocomplete="off" style="margin-top:8px">
         </div>
-        <div class="f-group" style="grid-column:1/-1"><label>Description</label><textarea id="pDesc" class="f-inp" style="resize:none;height:56px" placeholder="Ingrédients, origine…"></textarea></div>
+        <div class="f-group" style="grid-column:1/-1"><label>Description complète du produit</label><textarea id="pDesc" class="f-inp" style="resize:vertical;min-height:96px" maxlength="5000" placeholder="Décrivez précisément le produit : composition, usage, entretien, ce qui est inclus…"></textarea></div>
+        <details class="pf-box" open>
+          <summary>📋 Fiche détaillée (affichée sur la page du produit, comme chez les grandes boutiques)</summary>
+          <div class="pf-grid">
+            <div class="f-group"><label>Marque</label><input id="pBrand" class="f-inp" maxlength="80" placeholder="Ex : Tommy Hilfiger"></div>
+            <div class="f-group"><label>Pays d'origine</label><input id="pOrigin" class="f-inp" maxlength="60" placeholder="Ex : Chine, Cameroun…"></div>
+            <div class="f-group"><label>Livraison (délais, frais, zones)</label><input id="pDelivery" class="f-inp" maxlength="300" placeholder="Ex : Livraison à Douala en 48 h, 1 500 FCFA"></div>
+            <div class="f-group"><label>Principaux points forts — une ligne par point, au format « Libellé : valeur »</label><textarea id="pHighlights" class="f-inp" rows="4" style="resize:vertical" placeholder="Matériau : Acier inoxydable&#10;Pays d'origine : Chine&#10;Garantie : 2 ans"></textarea></div>
+            <div class="f-group"><label>À propos de cet article — une ligne par point (10 maximum)</label><textarea id="pBullets" class="f-inp" rows="5" style="resize:vertical" placeholder="Mouvement à quartz&#10;Bracelet en acier inoxydable&#10;Résistant à l'eau 5 ATM"></textarea></div>
+            <div class="f-group"><label>Spécifications — une ligne par caractéristique, « Libellé : valeur »</label><textarea id="pSpecs" class="f-inp" rows="5" style="resize:vertical" placeholder="Diamètre du boîtier : 43,5 mm&#10;Poids : 120 g&#10;Couleur : Bleu"></textarea></div>
+            <div class="f-group"><label>Photos supplémentaires (4 maximum — la photo principale est choisie plus haut)</label><div class="pf-imgs"><div class="pf-slot"><img id="pImg2Preview" alt="" style="display:none"><label for="pImg2File" class="up-btn" style="font-size:11px;padding:6px 8px">📷 Photo 2</label><input id="pImg2File" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="onPickImage(this,'pImg2')"><button type="button" id="pImg2Clear" class="up-clear" style="display:none" onclick="clearImage('pImg2')">Retirer</button><span id="pImg2Status" class="up-status"></span><input id="pImg2" type="hidden"></div><div class="pf-slot"><img id="pImg3Preview" alt="" style="display:none"><label for="pImg3File" class="up-btn" style="font-size:11px;padding:6px 8px">📷 Photo 3</label><input id="pImg3File" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="onPickImage(this,'pImg3')"><button type="button" id="pImg3Clear" class="up-clear" style="display:none" onclick="clearImage('pImg3')">Retirer</button><span id="pImg3Status" class="up-status"></span><input id="pImg3" type="hidden"></div><div class="pf-slot"><img id="pImg4Preview" alt="" style="display:none"><label for="pImg4File" class="up-btn" style="font-size:11px;padding:6px 8px">📷 Photo 4</label><input id="pImg4File" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="onPickImage(this,'pImg4')"><button type="button" id="pImg4Clear" class="up-clear" style="display:none" onclick="clearImage('pImg4')">Retirer</button><span id="pImg4Status" class="up-status"></span><input id="pImg4" type="hidden"></div><div class="pf-slot"><img id="pImg5Preview" alt="" style="display:none"><label for="pImg5File" class="up-btn" style="font-size:11px;padding:6px 8px">📷 Photo 5</label><input id="pImg5File" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="onPickImage(this,'pImg5')"><button type="button" id="pImg5Clear" class="up-clear" style="display:none" onclick="clearImage('pImg5')">Retirer</button><span id="pImg5Status" class="up-status"></span><input id="pImg5" type="hidden"></div></div></div>
+          </div>
+        </details>
+        <div class="pf-disc">
+          <b style="font-size:13px">🏷️ Remise (facultative)</b>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+            <div class="f-group"><label>Pourcentage (1 à 90)</label><input id="pDiscount" type="number" min="0" max="90" class="f-inp" placeholder="0 = aucune"></div>
+            <div class="f-group"><label>Fin de l'offre</label><input id="pDiscEnd" type="date" class="f-inp"></div>
+          </div>
+          <span class="pay-hint" style="font-size:11px;color:#6b7280">Le prix barré, le pourcentage et la date de fin s'affichent automatiquement sur le site. À la date de fin, le prix normal revient.</span>
+        </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
         <button onclick="submitProduct()" class="f-btn">💾 Enregistrer</button>
