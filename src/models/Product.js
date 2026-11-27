@@ -3,7 +3,15 @@ const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema({
   name:          { type: String, required: true, trim: true, maxlength: 200 },
-  description:   { type: String, trim: true, maxlength: 2000, default: '' },
+  description:   { type: String, trim: true, maxlength: 5000, default: '' },
+  // Fiche détaillée (façon boutique en ligne pro)
+  images:        { type: [String], default: [] },                       // photos supplémentaires (4 max) ; la 1re photo reste imageUrl
+  brand:         { type: String, trim: true, maxlength: 80, default: '' },
+  origin:        { type: String, trim: true, maxlength: 60, default: '' },
+  deliveryInfo:  { type: String, trim: true, maxlength: 300, default: '' },
+  highlights:    { type: [{ _id: false, label: String, value: String }], default: [] },   // « Principaux points forts »
+  bullets:       { type: [String], default: [] },                       // « À propos de cet article »
+  specs:         { type: [{ _id: false, label: String, value: String }], default: [] },    // « Spécifications du produit »
   price:         { type: Number, required: true, min: 0 },
   originalPrice: { type: Number, default: null },
   stock:         { type: Number, default: 0, min: 0 },
@@ -15,7 +23,7 @@ const ProductSchema = new mongoose.Schema({
   imageUrl:      { type: String, default: '' },
   type:          { type: String, enum: ['physical','digital'], default: 'physical' },
   digitalUrl:    { type: String, default: '', select: false },   // lien de téléchargement : remis seulement à l'acheteur payé
-  rating:        { type: Number, default: 4.5, min: 0, max: 5 },
+  rating:        { type: Number, default: 0, min: 0, max: 5 },           // 0 tant qu'aucun avis : jamais de fausse note
   reviewCount:   { type: Number, default: 0 },
   isActive:      { type: Boolean, default: true },
   isDeleted:     { type: Boolean, default: false },
