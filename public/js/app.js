@@ -3,7 +3,6 @@
 // Marketplace Afrique — vitrine
 // Tout passe par /api/* · le panier est local · le prix est TOUJOURS recalculé par le serveur au paiement
 // ══════════════════════════════════════════════
-const SITE = window.SITE || { name: 'Marketplace Afrique' };
 let TOKEN = localStorage.getItem('gp_token');
 let USER  = JSON.parse(localStorage.getItem('gp_user') || 'null');
 let PRODUCTS = [], PROMOS = [], CATS = [];
@@ -11,10 +10,6 @@ let CART = JSON.parse(localStorage.getItem('gp_cart') || '[]');
 let CART_OPEN = false, CUR_CAT = '';
 
 const $ = id => document.getElementById(id);
-const fmtN = n => Number(n).toLocaleString('fr-FR');
-const fmt  = n => fmtN(n) + ' FCFA';
-const esc  = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const PH = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='200'><rect width='300' height='200' fill='%23f7f4ed'/><text x='150' y='112' font-size='46' text-anchor='middle'>🛍️</text></svg>";
 
 function toast(msg, type = 'ok') {
   const w = $('toastWrap'); if (!w) return;
@@ -22,7 +17,6 @@ function toast(msg, type = 'ok') {
   d.textContent = msg; w.appendChild(d);
   setTimeout(() => { d.style.opacity = '0'; d.style.transition = 'opacity .3s'; setTimeout(() => d.remove(), 300); }, 3200);
 }
-function stars(r) { const n = Math.round(Number(r) * 2) / 2, s = []; for (let i = 1; i <= 5; i++) s.push(i <= n ? '★' : (i - .5 === n ? '⯨' : '☆')); return s.join(''); }
 function authHeaders() { const h = { 'Content-Type': 'application/json' }; if (TOKEN) h['Authorization'] = 'Bearer ' + TOKEN; return h; }
 
 // ── Compte ──
@@ -86,81 +80,6 @@ function renderCartItems() {
   footer.innerHTML = `<div class="gp-cart-total"><span>Total</span><span class="gp-cart-total-amount">${fmt(cartTotal())}</span></div>`;
   btn.style.display = 'block';
 }
-
-// ── Cartes produit ──
-const BRAND = SITE.name || 'Marketplace Afrique';
-const WA_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>';
-function waUrl(p) {
-  const n = String(p.sellerWhatsapp || ''); if (!/^[1-9][0-9]{7,14}$/.test(n)) return '';
-  return 'https://wa.me/' + n + '?text=' + encodeURIComponent('Bonjour, je suis intéressé par votre produit ' + p.name + ' sur ' + BRAND);
-}
-function waLink(p) { const u = waUrl(p); return u ? `<a class="gp-wa" href="${u}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="Écrire au vendeur sur WhatsApp" aria-label="Écrire au vendeur sur WhatsApp">${WA_ICON}</a>` : ''; }
-const shortDate = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-const longDate  = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-const shopLogo  = (s, cls) => s && s.logoUrl ? `<img class="${cls}" src="${esc(s.logoUrl)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
-
-function cardHtml(p) {
-  const out = p.stock <= 0, low = !out && p.stock <= 5, promo = !!p.discountActive;
-  const chip = p.shop ? `<div class="gp-shop-chip">${p.shop.logoUrl ? `<img src="${esc(p.shop.logoUrl)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}<span>${esc(p.shop.name)}</span></div>` : '';
-  const price = promo
-    ? `<div class="gp-price-row"><span class="gp-card-price gp-price-now promo">${fmtN(p.finalPrice)} <span class="gp-card-price-fcfa">FCFA</span></span><span class="gp-price-old">${fmtN(p.price)}</span></div><div class="gp-promo-end">Jusqu'au ${esc(shortDate(p.discountExpiresAt))}</div>`
-    : `<div class="gp-card-price">${fmtN(p.price)} <span class="gp-card-price-fcfa">FCFA</span></div>`;
-  return `<div class="gp-card" onclick="openProduct('${esc(p._id)}')">
-    <div style="position:relative">
-      <img src="${esc(p.imageUrl || PH)}" class="gp-card-img" alt="${esc(p.name)}" loading="lazy" onerror="this.onerror=null;this.src=PH">
-      ${promo ? `<span class="gp-badge-off">-${p.discountPercent}%</span>` : ''}
-      ${p.type === 'digital' ? '<span class="gp-dig">⚡ Digital</span>' : ''}
-      ${out ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center"><span style="background:#fff;color:#ef4444;font-size:11px;font-weight:700;padding:4px 12px;border-radius:100px">Épuisé</span></div>' : ''}
-    </div>
-    <div class="gp-card-body">
-      ${chip}
-      <div class="gp-card-cat">${esc(p.category || '')}</div>
-      <div class="gp-card-name">${esc(p.name)}</div>
-      <div class="gp-card-unit">${esc(p.unit || '')}</div>
-      <div class="gp-card-rating"><span class="gp-card-stars">${stars(p.rating || 0)}</span><span class="gp-card-rc">(${p.reviewCount || 0})</span></div>
-      <div class="gp-card-footer">
-        <div>${price}${low ? `<div class="gp-card-stock-low">⚠️ Plus que ${p.stock}</div>` : ''}</div>
-        <div style="display:flex;gap:6px;align-items:center">${waLink(p)}<button class="gp-add-btn" onclick="event.stopPropagation();addToCart('${esc(p._id)}')" ${out ? 'disabled' : ''} title="Ajouter au panier">+</button></div>
-      </div>
-    </div>
-  </div>`;
-}
-
-// ── Détail produit : description pro, réduction, boutique ──
-async function openProduct(id) {
-  const body = $('pdBody'); $('pdOverlay').style.display = 'block'; $('pdModal').style.display = 'block'; document.body.style.overflow = 'hidden';
-  body.innerHTML = '<div class="gp-loader">Chargement…</div>';
-  const base = findProduct(id);
-  const [pr, rv] = await Promise.allSettled([fetch('/api/products/' + encodeURIComponent(id)).then(r => r.ok ? r.json() : Promise.reject()), fetch('/api/avis?productId=' + encodeURIComponent(id) + '&limit=3').then(r => r.json())]);
-  const p = pr.status === 'fulfilled' ? pr.value : base; if (!p) { closeProduct(); toast('Produit introuvable', 'err'); return; }
-  if (!findProduct(id)) PRODUCTS.push(p);
-  const reviews = rv.status === 'fulfilled' ? rv.value : { reviews: [], total: 0 };
-  let usdt = ''; try { const q = await (await fetch('/api/pay/quote?amount=' + (p.finalPrice ?? p.price))).json(); if (q.usdt) usdt = fmtN(q.usdt) ; } catch (e) {}
-  const promo = !!p.discountActive, out = p.stock <= 0, wa = waUrl(p);
-  body.innerHTML = `<div class="pd-body">
-    <div><img class="pd-img" src="${esc(p.imageUrl || PH)}" alt="${esc(p.name)}" onerror="this.onerror=null;this.src=PH"></div>
-    <div>
-      <div class="pd-cat">${esc(p.category || '')}${p.unit ? ' · ' + esc(p.unit) : ''}${p.type === 'digital' ? ' · ⚡ Digital' : ''}</div>
-      <h2 class="pd-title">${esc(p.name)}</h2>
-      <div><span class="gp-card-stars">${stars(p.rating || 0)}</span> <small style="color:#6b7280">${p.reviewCount ? p.reviewCount + ' avis' : 'Pas encore d\'avis'}</small></div>
-      <div class="pd-price-box ${promo ? 'promo' : ''}">
-        <div><span class="pd-now">${fmtN(p.finalPrice ?? p.price)} FCFA</span>${promo ? `<span class="pd-old">${fmtN(p.price)}</span><span class="pd-off">-${p.discountPercent}%</span>` : ''}</div>
-        ${promo ? `<div class="pd-save">Vous économisez ${fmt(p.savings)}</div><div class="pd-until">⏳ Offre valable jusqu'au ${esc(longDate(p.discountExpiresAt))}</div>` : ''}
-        ${usdt ? `<div class="pd-usdt">≈ ${usdt} USDT (taux indicatif)</div>` : ''}
-      </div>
-      ${p.shop ? `<div class="pd-shop">${shopLogo(p.shop, 'pd-shop-logo')}<div class="pd-shop-name">Vendu par<br><b>${esc(p.shop.name)}</b></div></div>` : ''}
-      <div class="pd-desc">${esc(p.description || 'Aucune description pour ce produit.')}</div>
-      <div class="pd-actions">
-        <button class="pd-btn add" onclick="addToCart('${esc(p._id)}')" ${out ? 'disabled' : ''}>${out ? 'Épuisé' : 'Ajouter au panier'}</button>
-        ${wa ? `<a class="pd-wa" href="${wa}" target="_blank" rel="noopener noreferrer">${WA_ICON} WhatsApp</a>` : ''}
-      </div>
-      <div class="pd-reviews"><b>Avis clients</b>
-        ${(reviews.reviews || []).length ? reviews.reviews.map(a => `<div class="pd-rev"><span class="gp-card-stars">${stars(a.rating)}</span> <b>${esc(a.firstName)} ${esc(a.lastName)}</b> <small>· ${esc(a.location)}</small><div>${esc(a.comment)}</div></div>`).join('') : '<div style="color:#6b7280;margin-top:4px">Aucun avis pour le moment.</div>'}
-        <a href="/avis.html?productId=${esc(p._id)}" style="color:#0b4a40;font-weight:700;display:inline-block;margin-top:8px">Voir tous les avis →</a>
-      </div>
-    </div></div>`;
-}
-function closeProduct() { $('pdOverlay').style.display = 'none'; $('pdModal').style.display = 'none'; if (!CART_OPEN) document.body.style.overflow = ''; }
 
 // ── Liste des produits ──
 async function loadProducts(category = '', search = '') {
@@ -235,14 +154,18 @@ function doSearch() { const q = $('searchInput')?.value?.trim(); if (!q) { showC
 
 // ── Démarrage ──
 document.addEventListener('DOMContentLoaded', () => {
-  updateAuthUI(); updateCartBadge(); renderCartItems(); showCategories(); loadPromos();
+  updateAuthUI(); updateCartBadge(); renderCartItems(); loadPromos();
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('cat')) { VIEW_PRODUCTS = true; fetch('/api/categories').then(r => r.json()).then(d => { CATS = d.categories || []; openCategory(qs.get('cat')); }).catch(showCategories); }
+  else if (qs.get('q')) { const si = $('searchInput'); if (si) si.value = qs.get('q'); showCategories().then(doSearch); }
+  else showCategories();
   const y = $('ftYear'); if (y) y.textContent = new Date().getFullYear();
   const sup = $('ftSupport');
   if (sup) {
     if (SITE.supportEmail) { const a = document.createElement('a'); a.href = 'mailto:' + SITE.supportEmail; a.textContent = SITE.supportEmail; sup.appendChild(a); }
     if (/^[1-9][0-9]{7,14}$/.test(SITE.supportWhatsapp || '')) { const a = document.createElement('a'); a.href = 'https://wa.me/' + SITE.supportWhatsapp; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Support WhatsApp'; sup.appendChild(a); }
   }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCart(); closeProduct(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCart(); } });
   document.addEventListener('click', e => { const m = $('userMenu'); if (m && m.style.display === 'block' && !e.target.closest('#userMenu') && !e.target.closest('#avatarBtn')) m.style.display = 'none'; });
   $('searchInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 });

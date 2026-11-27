@@ -87,7 +87,7 @@ async function loadProducts() {
     if (!prods.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af">Aucun produit. Ajoutez-en ci-dessus.</td></tr>'; return; }
     const rowHtml = p=>`<tr>
       <td><img src="${esc(p.imageUrl||PLACEHOLDER)}" style="width:36px;height:36px;border-radius:8px;object-fit:cover" onerror="this.onerror=null;this.src=PLACEHOLDER" loading="lazy"></td>
-      <td style="font-weight:600">${esc(p.name)}</td>
+      <td style="font-weight:600">${esc(p.name)}${p.discountActive ? ` <span style="background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:800">-${p.discountPercent}%</span>` : ''}</td>
       <td><span style="background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700">${esc(p.category||'—')}</span></td>
       <td style="font-weight:700">${Number(p.price).toLocaleString('fr-FR')} FCFA</td>
       <td style="font-weight:700;color:${p.stock<=0?'#ef4444':p.stock<=5?'#f59e0b':'#16a34a'}">${p.stock}</td>
@@ -113,6 +113,7 @@ async function editProduct(id) {
     document.getElementById('pImg').value    = p.imageUrl||'';
     setImgPreview(p.imageUrl||'');
     { const tt=document.getElementById('pType'); if(tt){ tt.value=p.type||'physical'; onTypeChange(); } const dg=document.getElementById('pDigital'); if(dg) dg.value=''; }
+    fillProductDetails(p);
     document.getElementById('pDesc').value   = p.description||'';
     document.getElementById('formTitle').textContent = '✏️ Modifier le produit';
     window.scrollTo({ top:0, behavior:'smooth' });
@@ -122,6 +123,7 @@ async function editProduct(id) {
 function resetForm() {
   ['pEditId','pName','pPrice','pStock','pCat','pUnit','pImg','pDesc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   clearImage();
+  resetProductDetails();
   { const tt=document.getElementById('pType'); if(tt){ tt.value='physical'; onTypeChange(); } const dg=document.getElementById('pDigital'); if(dg) dg.value=''; }
   document.getElementById('formTitle').textContent = '➕ Nouveau produit';
 }
@@ -131,7 +133,7 @@ async function submitProduct() {
   const name  = document.getElementById('pName').value.trim();
   const price = document.getElementById('pPrice').value;
   if (!name||!price) { toast('Nom et prix requis','err'); return; }
-  const body = { name, price:Number(price), stock:Number(document.getElementById('pStock').value)||0, category:document.getElementById('pCat').value||'Divers', unit:document.getElementById('pUnit').value||'unité', imageUrl:document.getElementById('pImg').value||'', description:document.getElementById('pDesc').value||'', sellerId:USER.id||'merchant', type:document.getElementById('pType').value, digitalUrl:(document.getElementById('pDigital').value||'').trim() };
+  const body = { name, price:Number(price), stock:Number(document.getElementById('pStock').value)||0, category:document.getElementById('pCat').value||'Divers', unit:document.getElementById('pUnit').value||'unité', imageUrl:document.getElementById('pImg').value||'', description:document.getElementById('pDesc').value||'', sellerId:USER.id||'merchant', type:document.getElementById('pType').value, digitalUrl:(document.getElementById('pDigital').value||'').trim(), ...productDetailsFromForm() };
   try {
     const r = await api(id?'/products/'+id:'/products', { method:id?'PUT':'POST', body:JSON.stringify(body) });
     const d = await r.json();
@@ -305,7 +307,7 @@ async function saveWhatsapp() {
     const r = await api('/kpay/merchant/profile', { method: 'PUT', body: JSON.stringify({ whatsapp: v }) });
     const d = await r.json();
     if (!r.ok) { say(d.error || 'Erreur', false); return; }
-    say(v ? 'WhatsApp enregistré : l\'icône apparaît sur vos produits.' : 'WhatsApp retiré : l\'icône est cachée.', true);
+    say(v ? 'WhatsApp enregistré : l\'icône apparaît sur vos produits.' : 'WhatsApp retiré : l\'icône est cachée.', true); checkWhatsapp();
   } catch(e) { say('Erreur réseau', false); }
 }
 
@@ -329,3 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch(e){}
   }, 30000);
 });
+
+// Rappel : le bouton WhatsApp et le logo de la boutique s'affichent sur TOUS les produits du marchand
+async function checkWhatsapp() {
+  try { const d = await (await api('/kpay/merchant/wallet')).json(); const b = document.getElementById('waBanner'); if (b) b.style.display = d && d.whatsapp === '' ? 'block' : 'none'; } catch(e) {}
+}
+document.addEventListener('DOMContentLoaded', checkWhatsapp);

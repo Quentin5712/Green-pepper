@@ -112,3 +112,26 @@ function onTypeChange() {
   const t = document.getElementById('pType'), b = document.getElementById('pDigitalBox');
   if (t && b) b.style.display = t.value === 'digital' ? 'flex' : 'none';
 }
+
+// ── Fiche produit détaillée + remise (formulaires admin et marchand) ──
+const EXTRA_IMGS = ['pImg2', 'pImg3', 'pImg4', 'pImg5'];
+function productDetailsFromForm() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const disc = Math.round(Number(v('pDiscount')) || 0);
+  let end = '';
+  if (disc > 0 && v('pDiscEnd')) end = new Date(v('pDiscEnd') + 'T23:59:59').toISOString();      // l'offre dure jusqu'à la fin du jour choisi
+  return { brand: v('pBrand'), origin: v('pOrigin'), deliveryInfo: v('pDelivery'), highlights: v('pHighlights'), bullets: v('pBullets'), specs: v('pSpecs'),
+    images: EXTRA_IMGS.map(v).filter(Boolean), discount: disc, discountExpiresAt: end };
+}
+function fillProductDetails(p) {
+  const set = (id, val) => { const e = document.getElementById(id); if (e) e.value = val || ''; };
+  const pairs = a => (a || []).map(x => x.label + ' : ' + x.value).join('\n');
+  set('pBrand', p.brand); set('pOrigin', p.origin); set('pDelivery', p.deliveryInfo);
+  set('pHighlights', pairs(p.highlights)); set('pBullets', (p.bullets || []).join('\n')); set('pSpecs', pairs(p.specs));
+  EXTRA_IMGS.forEach((id, i) => { const u = (p.images || [])[i] || ''; set(id, u); setImgPreview(u, id); });
+  set('pDiscount', p.discountActive ? p.discountPercent : ''); set('pDiscEnd', p.discountActive && p.discountExpiresAt ? String(p.discountExpiresAt).slice(0, 10) : '');
+}
+function resetProductDetails() {
+  ['pBrand', 'pOrigin', 'pDelivery', 'pHighlights', 'pBullets', 'pSpecs', 'pDiscount', 'pDiscEnd'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  EXTRA_IMGS.forEach(id => clearImage(id));
+}

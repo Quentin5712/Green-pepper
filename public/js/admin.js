@@ -247,6 +247,7 @@ async function editProduct(id) {
     document.getElementById('pImg').value    = p.imageUrl||'';
     setImgPreview(p.imageUrl||'');
     { const tt=document.getElementById('pType'); if(tt){ tt.value=p.type||'physical'; onTypeChange(); } const dg=document.getElementById('pDigital'); if(dg) dg.value=''; }
+    fillProductDetails(p);
     document.getElementById('pDesc').value   = p.description||'';
     document.querySelector('.form-card p').textContent = '✏️ Modifier le produit';
     window.scrollTo({ top:0, behavior:'smooth' });
@@ -256,6 +257,7 @@ async function editProduct(id) {
 function resetProductForm() {
   ['pEditId','pName','pPrice','pStock','pCat','pUnit','pImg','pDesc'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
   clearImage();
+  resetProductDetails();
   { const tt=document.getElementById('pType'); if(tt){ tt.value='physical'; onTypeChange(); } const dg=document.getElementById('pDigital'); if(dg) dg.value=''; }
   document.querySelector('.form-card p').textContent = '➕ Nouveau produit';
 }
@@ -265,7 +267,7 @@ async function submitProduct() {
   const name  = document.getElementById('pName').value.trim();
   const price = document.getElementById('pPrice').value;
   if (!name || !price) { toast('Nom et prix requis', 'err'); return; }
-  const body = { name, price:Number(price), stock:Number(document.getElementById('pStock').value)||0, category:document.getElementById('pCat').value||'Divers', unit:document.getElementById('pUnit').value||'unité', imageUrl:document.getElementById('pImg').value||'', description:document.getElementById('pDesc').value||'', sellerId:'admin', type:document.getElementById('pType').value, digitalUrl:(document.getElementById('pDigital').value||'').trim() };
+  const body = { name, price:Number(price), stock:Number(document.getElementById('pStock').value)||0, category:document.getElementById('pCat').value||'Divers', unit:document.getElementById('pUnit').value||'unité', imageUrl:document.getElementById('pImg').value||'', description:document.getElementById('pDesc').value||'', sellerId:'admin', type:document.getElementById('pType').value, digitalUrl:(document.getElementById('pDigital').value||'').trim(), ...productDetailsFromForm() };
   try {
     const r = await api(id?'/products/'+id:'/products', { method:id?'PUT':'POST', body:JSON.stringify(body) });
     const d = await r.json();
