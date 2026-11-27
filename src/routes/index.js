@@ -29,10 +29,13 @@ router.delete('/auth/me',     verifyToken, authCtrl.deleteMe);
 router.get ('/products',             optionalAuth, productCtrl.getAll);
 router.get ('/products/seed',        productCtrl.seed);
 router.get ('/products/:id',         productCtrl.getOne);
+router.get ('/products/:id/related', productCtrl.related);
 router.post('/products',             verifyMerchant, productCtrl.create);
 router.put ('/products/:id',         verifyMerchant, productCtrl.update);
 router.delete('/products/:id',       verifyMerchant, productCtrl.remove);
 router.post('/products/:id/stock/add', verifyMerchant, productCtrl.addStock);
+router.put ('/products/:id/discount', verifyMerchant, productCtrl.setDiscount);       // chaque marchand gère SES remises
+router.delete('/products/:id/discount', verifyMerchant, productCtrl.removeDiscount);
 
 // ── SHOPS ──
 router.get ('/shops',     shopCtrl.getAll);
